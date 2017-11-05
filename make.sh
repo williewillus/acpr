@@ -1,3 +1,5 @@
+# TODO make this a real makefile/cmake file
+
 osr=$(cat /etc/os-release)
 if [[ $osr =~ .*ubuntu.* ]] 
 then
@@ -10,4 +12,4 @@ else
 	bsys=/usr/lib/libboost_system.a
 fi
 
-g++ -g -O2 -std=c++14 -Wall -flto *.cpp *.h `pkg-config fuse --libs --cflags` $bfs $bsys -o main
+g++ -g -O2 -std=c++14 -Wall -flto *.cpp *.h $bfs $bsys -o acpr
