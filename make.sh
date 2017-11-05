@@ -3,11 +3,11 @@
 osr=$(cat /etc/os-release)
 if [[ $osr =~ .*ubuntu.* ]] 
 then
-	# Lab computers do not install the necessary boost runtime libraries, so I ship them in this folder
-	bfs=./libboost_filesystem.a
-	bsys=./libboost_system.a
+	# Ubuntu systems (lab) install boost into a different directory
+	bfs=/usr/lib/x86_64-linux-gnu/libboost_filesystem.a
+	bsys=/usr/lib/x86_64-linux-gnu/libboost_system.a
 else
-	# If on my local machine, use proper libraries
+	# If on my local Arch Linux, use the standard directory
 	bfs=/usr/lib/libboost_filesystem.a
 	bsys=/usr/lib/libboost_system.a
 fi
