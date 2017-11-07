@@ -1,9 +1,11 @@
 CS380L Advanced Operating Systems Final Project
 Fall 2017
+Wally Guzman
+Vincent Lee 
 
 Requirements
 ============
-- Boost Filesystem and System libraries, version 1.55 or higher
+- Boost Filesystem and System libraries, version 1.58 or higher
 
 Building
 ========
