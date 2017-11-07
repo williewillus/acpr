@@ -4,9 +4,12 @@ project(acpr)
 
 set(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
 
-# find boost
+# find aio libs
+find_library(aio_LIBRARIES aio)
+
+# find boost libs
 find_package(Boost 1.55 REQUIRED COMPONENTS filesystem system)
-INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+# INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 
 # get headers
 INCLUDE_DIRECTORIES("include")
@@ -15,4 +18,4 @@ INCLUDE_DIRECTORIES("include")
 file(GLOB SOURCES "src/*.cpp")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
-target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} ${aio_LIBRARIES})

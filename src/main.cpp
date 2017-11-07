@@ -27,5 +27,9 @@ int main(int argc, char** argv)
         }
     }
 
+    io_context_t ctx = nullptr;
+    io_setup(MAX_TASKS, &ctx);
+    io_destroy(ctx);
+
     return 0;
 }
