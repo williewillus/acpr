@@ -2,6 +2,9 @@
 #include <fcntl.h>
 #include <iostream>
 #include <libaio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using boost::filesystem::path;
 using boost::filesystem::recursive_directory_iterator;
@@ -22,9 +25,31 @@ int main(int argc, char **argv) {
       exit(1);
   }
 
+  const path src { argv[1] };
+  const path dest { argv[2] };
+
   const recursive_directory_iterator end = {};
-  for (auto iter = recursive_directory_iterator{path{argv[1]}}; iter != end; iter++) {
-    cout << iter->path() << endl;
+  for (auto iter = recursive_directory_iterator{src}; iter != end; iter++) {
+    const path& p_src = iter->path();
+    const path relative = boost::filesystem::relative(p_src, src);
+    const path p_dest = dest / relative;
+
+    cout << "should copy " << p_src << " to " << p_dest << endl;
+
+    struct stat s;
+    if (::stat(p_src.string().c_str(), &s) == 0) {
+        if (s.st_mode & S_IFDIR) {
+            /* create dir and copy all metadata
+             * we do this all here becuase recursive_directory_iterator is breadth-first
+             * and we want to ensure dirs exist before copying
+             */
+        } else if (s.st_mode & S_IFREG) {
+            /* open src/dest file and copy all metadata
+             * spawn AIO task here
+             * should there be a threshold under which we just use read() directly?
+             */
+        }
+    }
   }
 
   // Example reading readme using aio?
