@@ -56,6 +56,15 @@ int main(int argc, char **argv) {
              * spawn AIO task here
              * should there be a threshold under which we just use read() directly?
              */
+            int srcfd = ::open(p_dest.string().c_str(), O_WRONLY | O_CREAT, s.st_mode);
+            if (srcfd == -1)
+                perror("failed to touch output file");
+            else {
+                cout << "+ touched file " << relative << endl;
+
+                // todo spawn AIO task or just read/write instead of closing
+                ::close(srcfd);
+            }
         }
     }
   }
@@ -75,7 +84,7 @@ int main(int argc, char **argv) {
 
   // set up completion callback
   io_set_callback(&cb, [](io_context_t ctx, iocb* cb, long res, long res2) -> void {
-    cout << "read " << res << "bytes. data:" << endl;
+    cout << "read " << res << " bytes. data:" << endl;
     cout << (char*) cb->u.c.buf << endl;
   });
 
