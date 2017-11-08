@@ -34,15 +34,23 @@ int main(int argc, char **argv) {
     const path relative = boost::filesystem::relative(p_src, src);
     const path p_dest = dest / relative;
 
-    cout << "should copy " << p_src << " to " << p_dest << endl;
+    cout << "-> should copy " << p_src << " to " << p_dest << endl;
 
     struct stat s;
     if (::stat(p_src.string().c_str(), &s) == 0) {
         if (s.st_mode & S_IFDIR) {
             /* create dir and copy all metadata
-             * we do this all here becuase recursive_directory_iterator is breadth-first
+             * we can do this here becuase recursive_directory_iterator is breadth-first (dirs before contents)
              * and we want to ensure dirs exist before copying
              */
+            if (!mkdir(p_dest.string().c_str(), s.st_mode)) {
+                cout << "+ made dir " << relative << endl;
+            } else {
+                std::string msg { "- couldn't make dest directory " };
+                msg.append(p_dest.string());
+                perror(msg.c_str());
+                return 1;
+            }
         } else if (s.st_mode & S_IFREG) {
             /* open src/dest file and copy all metadata
              * spawn AIO task here
