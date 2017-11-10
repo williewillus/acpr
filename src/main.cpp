@@ -12,6 +12,8 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
+// 1K (change me after testing)
+#define AIO_THRESHOLD (1024)
 #define MAX_TASKS (32)
 // 64K chunk size for now
 #define IO_CHUNK_SIZE (64 * 1024)
@@ -53,18 +55,23 @@ int main(int argc, char **argv) {
             }
         } else if (s.st_mode & S_IFREG) {
             /* open src/dest file and copy all metadata
-             * spawn AIO task here
-             * should there be a threshold under which we just use read() directly?
+             * if file is small enough, copy directly, otherwise spawn AIO task
              */
-            int srcfd = ::open(p_dest.string().c_str(), O_WRONLY | O_CREAT, s.st_mode);
-            if (srcfd == -1)
-                perror("failed to touch output file");
-            else {
-                cout << "+ touched file " << relative << endl;
+            if (s.st_size <= AIO_THRESHOLD) {
+                // TODO for educational purposes, implement this by hand if we have time
+                boost::filesystem::copy_file(p_src, p_dest, boost::filesystem::copy_option::overwrite_if_exists);
+            } else {
+                int srcfd = ::open(p_dest.string().c_str(), O_WRONLY | O_CREAT, s.st_mode);
+                if (srcfd == -1)
+                    perror("failed to touch output file");
+                else {
+                    cout << "+ touched file " << relative << endl;
 
-                // todo spawn AIO task or just read/write instead of closing
-                ::close(srcfd);
+                    // todo spawn AIO task
+                    ::close(srcfd);
+                }
             }
+
         }
     }
   }
