@@ -1,10 +1,8 @@
 #include <boost/filesystem.hpp>
 #include <fcntl.h>
 #include <iostream>
-#include <libaio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
+
+#include "aiocp.h"
 
 using boost::filesystem::path;
 using boost::filesystem::recursive_directory_iterator;
@@ -58,52 +56,25 @@ int main(int argc, char **argv) {
              * if file is small enough, copy directly, otherwise spawn AIO task
              */
             if (s.st_size <= AIO_THRESHOLD) {
+                cout << "--> Copying file normally since it's small" << endl;
                 // TODO for educational purposes, implement this by hand if we have time
                 boost::filesystem::copy_file(p_src, p_dest, boost::filesystem::copy_option::overwrite_if_exists);
             } else {
-                int srcfd = ::open(p_dest.string().c_str(), O_WRONLY | O_CREAT, s.st_mode);
+                int srcfd = ::open(p_src.string().c_str(), O_RDONLY);
+                int destfd = ::open(p_dest.string().c_str(), O_WRONLY | O_CREAT, s.st_mode);
                 if (srcfd == -1)
-                    perror("failed to touch output file");
+                    perror("failed to open in file");
+                else if (destfd == -1)
+                    perror("failed to open out file");
                 else {
-                    cout << "+ touched file " << relative << endl;
-
-                    // todo spawn AIO task
-                    ::close(srcfd);
+                    // copy with AIO. for now, this method is synchronous (return -> copy completed)
+                    cout << "--> Copying using AIO" << endl;
+                    ::copy(srcfd, destfd, s);
                 }
             }
-
         }
     }
   }
 
-  // Example reading readme using aio?
-  int srcfd = ::open("../README.txt", O_RDONLY);
-  if (srcfd < 0)
-      perror("failed to open");
-
-  io_context_t ctx {};
-  io_queue_init(MAX_TASKS, &ctx);
-
-  // set up the task
-  iocb cb {}; // this probably goes on the heap in a real program
-  char* buf = new char[IO_CHUNK_SIZE]();
-  io_prep_pread(&cb, srcfd, buf, IO_CHUNK_SIZE, 0);
-
-  // set up completion callback
-  io_set_callback(&cb, [](io_context_t ctx, iocb* cb, long res, long res2) -> void {
-    cout << "read " << res << " bytes. data:" << endl;
-    cout << (char*) cb->u.c.buf << endl;
-  });
-
-  // submit just one task
-  iocb* cbs[] = { &cb };
-  if (io_submit(ctx, 1, cbs) < 0)
-      cerr << "error submitting" << endl;
-
-  // sychronously await
-  io_queue_run(ctx);
-
-  io_queue_release(ctx);
-  delete[] buf;
   return 0;
 }
