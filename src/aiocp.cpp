@@ -29,9 +29,9 @@ static std::map<io_context_t, CopyTask*> tasks; // Each file copy has its own io
 
 io_context_t ctx;
 // io submits in progress
-int busy;
+int busy = 0;
 // io submits remaining
-int tocopy;
+int tocopy = 0;
 int srcfd;
 int destfd;
 
@@ -96,7 +96,7 @@ std::map<io_context_t, CopyTask*> CopyTask::tasks;
 // copies srcfd to destfd synchronously using kernel AIO, up to MAX_EVENTS at a time. closes fds after completion.
 void copy(int srcfd, int destfd, const struct stat& src_stat) {
     CopyTask ct = CopyTask { srcfd, destfd };
-    ct.tocopy = iops_needed(src_stat.st_size);
+    ct.tocopy = iops_needed(src_stat.st_size);    
 
     int offset = 0;
     // This loops until copy is done, eventually we want to move some of this logic into the callback handler so reads/writes are scheduled on-the-fly instead of all up front here

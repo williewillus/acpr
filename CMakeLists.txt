@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(acpr)
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
+set(CMAKE_CXX_FLAGS "-g -std=c++14 -Wall")
 
 # find aio libs
 find_library(aio_LIBRARIES aio)
