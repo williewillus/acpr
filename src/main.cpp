@@ -13,9 +13,6 @@ using std::endl;
 
 // 1K (change me after testing)
 #define AIO_THRESHOLD (1024)
-#define MAX_TASKS (32)
-// 64K chunk size for now
-#define IO_CHUNK_SIZE (64 * 1024)
 
 // libaio documentation (+ example of usage)
 // http://manpages.ubuntu.com/manpages/precise/en/man3/io.3.html
