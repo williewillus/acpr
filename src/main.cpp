@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "aiocp.h"
+#include "boost_backport.h"
 
 using boost::filesystem::path;
 using boost::filesystem::recursive_directory_iterator;
@@ -31,7 +32,7 @@ int main(int argc, char **argv) {
   const recursive_directory_iterator end = {};
   for (auto iter = recursive_directory_iterator{src}; iter != end; iter++) {
     const path& p_src = iter->path();
-    const path relative = boost::filesystem::relative(p_src, src);
+    const path relative = boost_backport::relative(p_src, src);
     const path p_dest = dest / relative;
 
     cout << "-> should copy " << p_src << " to " << p_dest << endl;
