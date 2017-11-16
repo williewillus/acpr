@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
 
   const path src { argv[1] };
   const path dest { argv[2] };
+  aio::init();
 
   const recursive_directory_iterator end = {};
   for (auto iter = recursive_directory_iterator{src}; iter != end; iter++) {
@@ -64,15 +65,22 @@ int main(int argc, char **argv) {
                     perror("failed to open in file");
                 else if (destfd == -1)
                     perror("failed to open out file");
-                else {
-                    // copy with AIO. for now, this method is synchronous (return -> copy completed)
+                else {                    
                     cout << "--> Copying using AIO" << endl;
-                    ::copy(srcfd, destfd, s);
+                    aio::copy(srcfd, destfd, s);
                 }
             }
         }
     }
+
+    // each iteration, handle finished events
+    aio::handle_events();
   }
 
+  // handle any outstanding events
+  while (!aio::handle_events())
+      ;
+
+  aio::cleanup();
   return 0;
 }

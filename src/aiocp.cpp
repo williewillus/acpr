@@ -4,36 +4,33 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <vector>
 
 #include "aiocp.h"
 
+using std::cout;
 using std::cerr;
 using std::endl;
 
-// Max IO events per CopyTask
-static const int MAX_EVENTS = 32;
-
+// TODO: should this be decided per-file? what's a good size?
 #define IO_BLKSIZE ((off_t) (64*1024))
 
-static constexpr int iops_needed(off_t filesz) {
-    if (filesz % IO_BLKSIZE == 0) {
-        return filesz / IO_BLKSIZE;
-    } else {
-        return (filesz / IO_BLKSIZE) + 1;
-    }
-}
-
-// Represents a single file copy
-struct CopyTask {
-static std::map<io_context_t, CopyTask*> tasks; // Each file copy has its own io_context_t. This map is so we can recover the task in the IO callback
+namespace aio {
 
 io_context_t ctx;
-// io submits in progress
-int busy = 0;
-// io submits remaining
-int tocopy = 0;
-int srcfd;
-int destfd;
+
+// Represents a single file copy
+// Currently reads/writes are scheduled block by block in order
+// TODO: Use multiple cb's and schedule multiple blocks at once?
+struct CopyTask {
+static std::map<iocb*, CopyTask*> tasks; // This map is so we can recover the task belonging to the cb in the IO callback
+
+off_t offset = 0;      // current offset we are reading to/writing from
+char buf[IO_BLKSIZE] = {}; // buffer used for all IO on this file
+iocb cb {}; // iocb used for all IO on this file
+const int srcfd;
+const int destfd;
+const off_t src_sz;
 
 static void write_done(io_context_t ctx, iocb* cb, long bytes_written, long ec) {
     if (ec) {
@@ -44,13 +41,15 @@ static void write_done(io_context_t ctx, iocb* cb, long bytes_written, long ec) 
     if (bytes_written != cb->u.c.nbytes) {
         cerr << "expected to write " << cb->u.c.nbytes << " bytes but wrote " << bytes_written << endl;
         exit(1);
+    }        
+
+    CopyTask* task = tasks.at(cb);
+    if (task == nullptr) {
+        cerr << "couldn't find task for cb!" << endl;
+        exit(1);
     }
 
-    CopyTask* task = tasks[ctx];
-    task->tocopy--;
-    task->busy--;
-    delete[] ((char*) cb->u.c.buf);
-    delete cb;
+    task->handle_write();
 }
 
 static void read_done(io_context_t ctx, iocb* cb, long bytes_read, long ec) {
@@ -64,66 +63,93 @@ static void read_done(io_context_t ctx, iocb* cb, long bytes_read, long ec) {
         exit(1);
     }
 
-    CopyTask* task = tasks[ctx];
-    io_prep_pwrite(cb, task->destfd, cb->u.c.buf, cb->u.c.nbytes, cb->u.c.offset);
-    io_set_callback(cb, write_done);
-    if (io_submit(ctx, 1, &cb) != 1) {
+    CopyTask* task = tasks.at(cb);
+    if (task == nullptr) {
+        cerr << "couldn't find task for cb!" << endl;
+        exit(1);
+    }
+
+    task->handle_read();
+}
+
+public:
+CopyTask(int srcfd, int destfd, off_t src_sz)
+    : srcfd(srcfd),
+      destfd(destfd),
+      src_sz(src_sz) {
+    cb.u.c.buf = buf;
+    tasks[&cb] = this;
+}
+
+~CopyTask() {
+    ::close(srcfd);
+
+    ::fsync(destfd);
+    ::close(destfd);
+}
+
+void schedule_next_read() {
+    // offset is set correctly at this point
+    io_prep_pread(&cb, srcfd, cb.u.c.buf, std::min(src_sz - offset, IO_BLKSIZE), offset);
+    io_set_callback(&cb, CopyTask::read_done);
+    iocb* arr = &cb;
+    if (io_submit(ctx, 1, &arr) != 1) {
+        cerr << "failed to submit read" << endl;
+        exit(1);
+    }
+}
+
+void handle_read() {
+    // convert directly into a write
+    io_prep_pwrite(&cb, destfd, cb.u.c.buf, cb.u.c.nbytes, cb.u.c.offset);
+    io_set_callback(&cb, CopyTask::write_done);
+    iocb* arr = &cb;
+    if (io_submit(ctx, 1, &arr) != 1) {
         cerr << "failed to submit write from read" << endl;
         exit(1);
     }
 }
 
-public:
-CopyTask(int srcfd, int destfd)
-    : srcfd(srcfd),
-      destfd(destfd) {
-    io_queue_init(MAX_EVENTS, &ctx);
-    tasks[ctx] = this;
-}
+void handle_write() {
+    offset += cb.u.c.nbytes;
 
-~CopyTask() {
-    tasks.erase(tasks.find(ctx));
-    io_queue_release(ctx);
-    ctx = io_context_t{};
-    ::close(srcfd);
-    ::close(destfd);
+    if (offset < src_sz) {
+        schedule_next_read();
+    } else {
+        // we're done so remove from tasks map
+        // no one else is managing this object so we just delete ourselves
+        cout << "--> finished an AIO copy" << endl;
+        tasks.erase(tasks.find(&cb));
+        delete this;
+    }
 }
 
 };
 
-std::map<io_context_t, CopyTask*> CopyTask::tasks;
+std::map<iocb*, CopyTask*> CopyTask::tasks;
 
-// copies srcfd to destfd synchronously using kernel AIO, up to MAX_EVENTS at a time. closes fds after completion.
-void copy(int srcfd, int destfd, const struct stat& src_stat) {
-    CopyTask ct = CopyTask { srcfd, destfd };
-    ct.tocopy = iops_needed(src_stat.st_size);    
+void init() {
+    // receive up to 32 events every time we call handle_events
+    io_queue_init(32, &ctx);
+}
 
-    int offset = 0;
-    // This loops until copy is done, eventually we want to move some of this logic into the callback handler so reads/writes are scheduled on-the-fly instead of all up front here
-    while (ct.tocopy > 0) {
-        int n = std::min(std::min(MAX_EVENTS - ct.busy, MAX_EVENTS / 2), iops_needed(src_stat.st_size - offset));
-        if (n > 0) {
-            iocb* ioq[n];
-            for (int i = 0; i < n; i++) {
-                iocb* io = new iocb{};
-                int iosize = std::min(src_stat.st_size - offset, IO_BLKSIZE);
-                char* buf = new char[IO_BLKSIZE]();
-                io_prep_pread(io, srcfd, buf, iosize, offset);
-                io_set_callback(io, CopyTask::read_done);
-                ioq[i] = io;
-                offset += iosize;
-            }
+void cleanup() {
+    io_queue_release(ctx);
+}
 
-            if (io_submit(ct.ctx, n, ioq) != n) {
-                cerr << "error submitting" << endl;
-                exit(1);
-            }
-            ct.busy += n;
-        }
-
-        if (io_queue_run(ct.ctx) < 0) {
-            cerr << "error running" << endl;
-            exit(1);
-        }
+bool handle_events() {
+    if (CopyTask::tasks.empty()) {
+        return true;
+    } else {
+        // drive the event queue, callbacks will be invoked from here
+        io_queue_run(ctx);
+        return false;
     }
+}
+
+void copy(int srcfd, int destfd, const struct stat& src_stat) {
+    CopyTask* ct = new CopyTask { srcfd, destfd, src_stat.st_size };
+    ct->schedule_next_read();
+}
+
 }
