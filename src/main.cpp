@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 
   const path src { argv[optind] };
   const path dest { argv[optind + 1] };
-  aio::init(aio_blocksize, aio_max_events, aio_iocb_count, aio_timeout_ns, verbose);
+  aio::init(aio_blocksize, aio_max_events, aio_iocb_count, aio_timeout_ns);
 
   const recursive_directory_iterator end = {};
   for (auto iter = recursive_directory_iterator{src}; iter != end; iter++) {

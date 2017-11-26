@@ -159,13 +159,12 @@ void handle_write(iocb* cb) {
 
 std::map<iocb*, CopyTask*> CopyTask::tasks;
 
-void init(int blocksize, int max_events, int iocb_count, long timeout_ns, bool verbose) {
+void init(int blocksize, int max_events, int iocb_count, long timeout_ns) {
     aio_blocksize = blocksize;
     aio_max_events = max_events;
     io_queue_init(max_events, &ctx);
     aio_iocb_count = iocb_count;
-    aio_timeout_ns = timeout_ns;
-    verbose = verbose;
+    aio_timeout_ns = timeout_ns;    
 }
 
 void cleanup() {
