@@ -1,0 +1,11 @@
+implementation notes and musings, to help with the report
+
+- had a choice between POSIX aio (emulated in glibc in userspace) or Linux AIO (Linux, nonportable, in-kernel)
+- libaio userspace wrapper last updated 2015, very poorly documented (had to find man pages from 2012 ubuntu)
+  - some wrapper functions had very poor implementations
+    - io_queue_run naively requests one event using one system call until the queue is empty
+- utilized boost filesystem iterator for the extremely tricky task of fs tree walking
+- also used boost filesystem copy for non-AIO copies
+- boost filesystem lib on lab machines too outdated to have a specific call path::relativize, backported by copying from boost github
+- cmake used for build system, very helpful and "fire and forget"
+- C++ helpful

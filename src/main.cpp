@@ -18,7 +18,7 @@ bool verbose = false;
 // http://manpages.ubuntu.com/manpages/precise/en/man3/io.3.html
 
 int main(int argc, char **argv) {
-  int aio_threshold = 1024;
+  int aio_threshold = 1024; // todo reset this default higher after we're done tuning
   int aio_blocksize = 64 * 1024;
   int aio_max_events = 32;
   int aio_iocb_count = 5;
