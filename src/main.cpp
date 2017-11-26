@@ -12,6 +12,8 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
+bool verbose = false;
+
 // libaio documentation (+ example of usage)
 // http://manpages.ubuntu.com/manpages/precise/en/man3/io.3.html
 
@@ -20,7 +22,7 @@ int main(int argc, char **argv) {
   int aio_blocksize = 64 * 1024;
   int aio_max_events = 32;
   int aio_iocb_count = 5;
-  bool verbose = false;
+  long aio_timeout_ns = 5000000;
 
   int c = '0';
   while ((c = getopt(argc, argv, "b:c:m:t:v")) != -1) {
@@ -28,6 +30,7 @@ int main(int argc, char **argv) {
       case 'b': aio_blocksize = std::stoi(optarg) * 1024; break;
       case 'c': aio_iocb_count = std::stoi(optarg); break;
       case 'm': aio_max_events = std::stoi(optarg); break;
+      case 'n': aio_timeout_ns = std::stol(optarg); break;
       case 't': aio_threshold = std::stoi(optarg); break;
       case 'v': verbose = true; break;
       default: throw std::runtime_error("Illegal option");
@@ -51,7 +54,7 @@ int main(int argc, char **argv) {
 
   const path src { argv[optind] };
   const path dest { argv[optind + 1] };
-  aio::init(aio_blocksize, aio_max_events, aio_iocb_count, verbose);
+  aio::init(aio_blocksize, aio_max_events, aio_iocb_count, aio_timeout_ns, verbose);
 
   const recursive_directory_iterator end = {};
   for (auto iter = recursive_directory_iterator{src}; iter != end; iter++) {
@@ -104,12 +107,8 @@ int main(int argc, char **argv) {
     }
 
     // each iteration, handle finished events
-    aio::handle_events();
+    aio::handle_events(false);
   }
-
-  // handle any outstanding events
-  while (!aio::handle_events())
-      ;
 
   aio::cleanup();
   return 0;

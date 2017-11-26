@@ -13,9 +13,12 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+extern bool verbose;
+
 static off_t aio_blocksize;
 static unsigned int aio_iocb_count;
-static bool aio_verbose;
+static int aio_max_events;
+static long aio_timeout_ns;
 
 namespace aio {
 
@@ -122,7 +125,7 @@ void schedule_next_reads() {
         cerr << "failed to submit read" << endl;
         exit(1);
     } else if (num_submit > 1) {
-        if (aio_verbose)
+        if (verbose)
             cout << "--> submitted " << num_submit << " reads" << endl;
     }
 }
@@ -141,12 +144,12 @@ void handle_write(iocb* cb) {
 
     if (offset < src_sz) {
         // TODO: there is still the case where a big file gets N CB's scheduled up front, then schedules additional ones 1-by-1.
-        // even so, there will always be N CB's in flight, so is this a real problem?
+        // even so, there will always be N CB's in flight, so is this a real problem? this will invoke lots of fine-grained syscalls
         schedule_next_reads();
     } else if (free_iocbs.size() == aio_iocb_count) {
         // done: there is no more to copy and we are the last finishing iocb
         // no one else is managing this object so we just delete ourselves
-        if (aio_verbose)
+        if (verbose)
             cout << "--> finished an AIO copy" << endl;
         delete this;
     }
@@ -156,26 +159,47 @@ void handle_write(iocb* cb) {
 
 std::map<iocb*, CopyTask*> CopyTask::tasks;
 
-void init(int blocksize, int max_events, int iocb_count, bool verbose) {
+void init(int blocksize, int max_events, int iocb_count, long timeout_ns, bool verbose) {
     aio_blocksize = blocksize;
+    aio_max_events = max_events;
     io_queue_init(max_events, &ctx);
-    assert(iocb_count > 0);
     aio_iocb_count = iocb_count;
-    aio_verbose = verbose;
+    aio_timeout_ns = timeout_ns;
+    verbose = verbose;
 }
 
 void cleanup() {
+    if (verbose)
+        cout << "draining queue" << endl;
+    while (!CopyTask::tasks.empty()) {
+        handle_events(true);
+    }
     io_queue_release(ctx);
 }
 
-bool handle_events() {
-    if (CopyTask::tasks.empty()) {
-        return true;
+void handle_events(bool drain) {
+    // we read the event queue manually using io_getevents
+    // because io_queue_run just naively drains the queue 1 event (= 1 system call) at a time
+    // TODO we can sometimes get more than aio_max_events here, why is that? hardcode 64 for now
+    static io_event evts[64];
+
+    timespec timeout;
+    if (drain) {
+        // if draining, no timeout
+        timeout = { 0, 0 };
     } else {
-        // drive the event queue, callbacks will be invoked from here
-        io_queue_run(ctx);
-        return false;
+        timeout = { 0, aio_timeout_ns };
     }
+
+    int evts_handled = io_getevents(ctx, 0, 64, evts, &timeout);
+
+    for (int i = 0; i < evts_handled; i++) {
+        io_callback_t callback = (io_callback_t)evts[i].data;
+        callback(ctx, evts[i].obj, evts[i].res, evts[i].res2);
+    }
+
+    if (verbose)
+        cout << "handled " << evts_handled << " events" << endl;
 }
 
 void copy(int srcfd, int destfd, const struct stat& src_stat) {

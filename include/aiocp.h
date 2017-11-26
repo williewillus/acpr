@@ -3,11 +3,11 @@
 
 namespace aio {
 
-void init(int blocksize, int max_events, int iocb_count, bool verbose);
+void init(int blocksize, int max_events, int iocb_count, long aio_timeout_ns, bool verbose);
 
 void cleanup();
 
-bool handle_events();
+void handle_events(bool drain);
 
 void copy(int srcfd, int destfd, const struct stat& src_stat);
 
