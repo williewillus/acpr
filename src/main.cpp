@@ -1,4 +1,5 @@
 #include <boost/filesystem.hpp>
+#include <getopt.h>
 #include <fcntl.h>
 #include <iostream>
 
@@ -11,21 +12,46 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
-// 1K (change me after testing)
-#define AIO_THRESHOLD (1024)
-
 // libaio documentation (+ example of usage)
 // http://manpages.ubuntu.com/manpages/precise/en/man3/io.3.html
 
 int main(int argc, char **argv) {
-  if (argc < 3) {
-      cout << "Usage: " << argv[0] << " <src> <dest>" << endl;
-      exit(1);
+  int aio_threshold = 1024;
+  int aio_blocksize = 64 * 1024;
+  int aio_max_events = 32;
+  int aio_iocb_count = 5;
+  bool verbose = false;
+
+  int c = '0';
+  while ((c = getopt(argc, argv, "b:c:m:t:v")) != -1) {
+      switch (c) {
+      case 'b': aio_blocksize = std::stoi(optarg) * 1024; break;
+      case 'c': aio_iocb_count = std::stoi(optarg); break;
+      case 'm': aio_max_events = std::stoi(optarg); break;
+      case 't': aio_threshold = std::stoi(optarg); break;
+      case 'v': verbose = true; break;
+      default: throw std::runtime_error("Illegal option");
+      }
   }
 
-  const path src { argv[1] };
-  const path dest { argv[2] };
-  aio::init();
+  assert(aio_threshold > 0);
+  assert(aio_blocksize > 0);
+  assert(aio_max_events > 0);
+  assert(aio_iocb_count > 0);
+
+  cout << "threshold " << aio_threshold << endl;
+  cout << "blksize " << aio_blocksize << endl;
+  cout << "maxevt " << aio_max_events << endl;
+  cout << "cbcount " << aio_iocb_count << endl;
+
+  if (argc - optind < 2) {
+      cout << "Missing src or dest file" << endl;
+      return 1;
+  }
+
+  const path src { argv[optind] };
+  const path dest { argv[optind + 1] };
+  aio::init(aio_blocksize, aio_max_events, aio_iocb_count, verbose);
 
   const recursive_directory_iterator end = {};
   for (auto iter = recursive_directory_iterator{src}; iter != end; iter++) {
@@ -33,7 +59,8 @@ int main(int argc, char **argv) {
     const path relative = boost_backport::relative(p_src, src);
     const path p_dest = dest / relative;
 
-    cout << "-> should copy " << p_src << " to " << p_dest << endl;
+    if (verbose)
+        cout << "-> should copy " << p_src << " to " << p_dest << endl;
 
     struct stat s;
     if (::stat(p_src.string().c_str(), &s) == 0) {
@@ -43,7 +70,8 @@ int main(int argc, char **argv) {
              * and we want to ensure dirs exist before copying
              */
             if (!mkdir(p_dest.string().c_str(), s.st_mode)) {
-                cout << "+ made dir " << relative << endl;
+                if (verbose)
+                    cout << "+ made dir " << relative << endl;
             } else {
                 std::string msg { "- couldn't make dest directory " };
                 msg.append(p_dest.string());
@@ -54,8 +82,9 @@ int main(int argc, char **argv) {
             /* open src/dest file and copy all metadata
              * if file is small enough, copy directly, otherwise spawn AIO task
              */
-            if (s.st_size <= AIO_THRESHOLD) {
-                cout << "--> Copying file normally since it's small" << endl;
+            if (s.st_size <= aio_threshold) {
+                if (verbose)
+                    cout << "--> Copying file normally since it's small" << endl;
                 // TODO for educational purposes, implement this by hand if we have time
                 boost::filesystem::copy_file(p_src, p_dest, boost::filesystem::copy_option::overwrite_if_exists);
             } else {
@@ -65,8 +94,9 @@ int main(int argc, char **argv) {
                     perror("failed to open in file");
                 else if (destfd == -1)
                     perror("failed to open out file");
-                else {                    
-                    cout << "--> Copying using AIO" << endl;
+                else {
+                    if (verbose)
+                        cout << "--> Copying using AIO" << endl;
                     aio::copy(srcfd, destfd, s);
                 }
             }

@@ -13,8 +13,9 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-// TODO: should this be decided per-file? what's a good size?
-#define IO_BLKSIZE ((off_t) (64*1024))
+static off_t aio_blocksize;
+static unsigned int aio_iocb_count;
+static bool aio_verbose;
 
 namespace aio {
 
@@ -22,13 +23,10 @@ io_context_t ctx;
 
 // Represents a single file copy
 struct CopyTask {
-
-// TODO tweak this
-static const int NUM_CBS = 5;
 static std::map<iocb*, CopyTask*> tasks; // This map is so we can recover the task belonging to the cb in the IO callback
 
 off_t offset = 0;      // offset to use for the next read operation
-std::vector<iocb*> free_iocbs; // iocbs to use in next read/write ops
+std::vector<iocb*> free_iocbs;
 const int srcfd;
 const int destfd;
 const off_t src_sz;
@@ -78,11 +76,11 @@ CopyTask(int srcfd, int destfd, off_t src_sz)
     : srcfd(srcfd),
       destfd(destfd),
       src_sz(src_sz) {
-    free_iocbs.reserve(NUM_CBS);
+    free_iocbs.reserve(aio_iocb_count);
 
-    for (int i = 0; i < NUM_CBS; i++) {
+    for (unsigned int i = 0; i < aio_iocb_count; i++) {
         iocb* cb = new iocb{};
-        cb->u.c.buf = new char[IO_BLKSIZE];
+        cb->u.c.buf = new char[aio_blocksize];
         free_iocbs.push_back(cb);
         tasks[cb] = this;
     }
@@ -94,8 +92,8 @@ CopyTask(int srcfd, int destfd, off_t src_sz)
     ::fsync(destfd);
     ::close(destfd);
 
-    assert(free_iocbs.size() == NUM_CBS);
-    for (int i = 0; i < NUM_CBS; i++) {
+    assert(free_iocbs.size() == aio_iocb_count);
+    for (unsigned int i = 0; i < aio_iocb_count; i++) {
         iocb* cb = free_iocbs[i];
 
         tasks.erase(cb);
@@ -104,32 +102,32 @@ CopyTask(int srcfd, int destfd, off_t src_sz)
     }
 }
 
-// spawn up to NUM_CBS more reads
+// spawn up to aio_iocb_count more reads
 void schedule_next_reads() {
-    std::array<iocb*, NUM_CBS> submit;
+    iocb* submit[aio_iocb_count];
     int num_submit = 0;
 
     while (!free_iocbs.empty() && offset < src_sz) {
         iocb* cb = free_iocbs.back();
         free_iocbs.pop_back();
 
-        auto sz = std::min(src_sz - offset, IO_BLKSIZE);
+        auto sz = std::min(src_sz - offset, aio_blocksize);
         io_prep_pread(cb, srcfd, cb->u.c.buf, sz, offset);
         io_set_callback(cb, CopyTask::read_done);
         submit[num_submit++] = cb;
         offset += sz;
     }
 
-    if (io_submit(ctx, num_submit, submit.data()) != num_submit) {
+    if (io_submit(ctx, num_submit, submit) != num_submit) {
         cerr << "failed to submit read" << endl;
         exit(1);
     } else if (num_submit > 1) {
-        cout << "--> submitted " << num_submit << " reads" << endl;
+        if (aio_verbose)
+            cout << "--> submitted " << num_submit << " reads" << endl;
     }
 }
 
-void handle_read(iocb* cb) {
-    // convert directly into a write
+void handle_read(iocb* cb) {    
     io_prep_pwrite(cb, destfd, cb->u.c.buf, cb->u.c.nbytes, cb->u.c.offset);
     io_set_callback(cb, CopyTask::write_done);
     if (io_submit(ctx, 1, &cb) != 1) {
@@ -145,10 +143,11 @@ void handle_write(iocb* cb) {
         // TODO: there is still the case where a big file gets N CB's scheduled up front, then schedules additional ones 1-by-1.
         // even so, there will always be N CB's in flight, so is this a real problem?
         schedule_next_reads();
-    } else if (free_iocbs.size() == NUM_CBS) {
+    } else if (free_iocbs.size() == aio_iocb_count) {
         // done: there is no more to copy and we are the last finishing iocb
         // no one else is managing this object so we just delete ourselves
-        cout << "--> finished an AIO copy" << endl;        
+        if (aio_verbose)
+            cout << "--> finished an AIO copy" << endl;
         delete this;
     }
 }
@@ -157,9 +156,12 @@ void handle_write(iocb* cb) {
 
 std::map<iocb*, CopyTask*> CopyTask::tasks;
 
-void init() {
-    // receive up to 32 events every time we call handle_events
-    io_queue_init(32, &ctx);
+void init(int blocksize, int max_events, int iocb_count, bool verbose) {
+    aio_blocksize = blocksize;
+    io_queue_init(max_events, &ctx);
+    assert(iocb_count > 0);
+    aio_iocb_count = iocb_count;
+    aio_verbose = verbose;
 }
 
 void cleanup() {
