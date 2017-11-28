@@ -6,13 +6,19 @@ Vincent Lee
 Requirements
 ============
 - Boost Filesystem and System libraries, version 1.58 or higher
+- Python 3.5 or higher
 
 Building
 ========
 - Create build/ directory in root
-- Within build/, execute "cmake .."
-- Within build/, execute "make"
-- The binary will be output in "build/acpr"
+- Within build/, execute `cmake ..`
+- Within build/, execute `make`
+- The binary will be output in `build/acpr`
+
+Testing
+=======
+- Within test/, execute `chmod +x acpr_test.py`
+- Within test/, run `./acpr_test.py [options] src_dir dest_dir`
 
 Cleaning
 ========

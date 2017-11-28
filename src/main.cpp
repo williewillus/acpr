@@ -42,10 +42,12 @@ int main(int argc, char **argv) {
   assert(aio_max_events > 0);
   assert(aio_iocb_count > 0);
 
-  cout << "threshold " << aio_threshold << endl;
-  cout << "blksize " << aio_blocksize << endl;
-  cout << "maxevt " << aio_max_events << endl;
-  cout << "cbcount " << aio_iocb_count << endl;
+  if (verbose) {
+    cout << "threshold " << aio_threshold << endl;
+    cout << "blksize " << aio_blocksize << endl;
+    cout << "maxevt " << aio_max_events << endl;
+    cout << "cbcount " << aio_iocb_count << endl;
+  }
 
   if (argc - optind < 2) {
       cout << "Missing src or dest file" << endl;
@@ -66,6 +68,20 @@ int main(int argc, char **argv) {
         cout << "-> should copy " << p_src << " to " << p_dest << endl;
 
     struct stat s;
+
+    if (::stat(dest.string().c_str(), &s) < 0) {
+        /* create dest directory if it doesn't already exist
+         * to match cp -r default behavior
+         */
+        if(::stat(src.string().c_str(), &s) < 0) {
+            perror("src dir does not exist");
+            exit(EXIT_FAILURE);
+        }
+        if (!mkdir(dest.string().c_str(), s.st_mode))
+            if (verbose)
+                cout << "+ made dir " << dest << endl;
+    }
+
     if (::stat(p_src.string().c_str(), &s) == 0) {
         if (s.st_mode & S_IFDIR) {
             /* create dir and copy all metadata
