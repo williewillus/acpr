@@ -30,6 +30,7 @@ static std::map<iocb*, CopyTask*> tasks; // This map is so we can recover the ta
 
 off_t offset = 0;      // offset to use for the next read operation
 std::vector<iocb*> free_iocbs;
+std::vector<iocb*> queued_iocbs; // iocbs initialized and waiting to be submitted
 const int srcfd;
 const int destfd;
 const off_t src_sz;
@@ -80,6 +81,7 @@ CopyTask(int srcfd, int destfd, off_t src_sz)
       destfd(destfd),
       src_sz(src_sz) {
     free_iocbs.reserve(aio_iocb_count);
+    queued_iocbs.reserve(aio_iocb_count);
 
     for (unsigned int i = 0; i < aio_iocb_count; i++) {
         iocb* cb = new iocb{};
@@ -96,20 +98,15 @@ CopyTask(int srcfd, int destfd, off_t src_sz)
     ::close(destfd);
 
     assert(free_iocbs.size() == aio_iocb_count);
-    for (unsigned int i = 0; i < aio_iocb_count; i++) {
-        iocb* cb = free_iocbs[i];
-
+    assert(queued_iocbs.empty());
+    for (iocb* cb : free_iocbs) {
         tasks.erase(cb);
         delete[] (char*) (cb->u.c.buf);
         delete cb;
     }
 }
 
-// spawn up to aio_iocb_count more reads
 void schedule_next_reads() {
-    iocb* submit[aio_iocb_count];
-    int num_submit = 0;
-
     while (!free_iocbs.empty() && offset < src_sz) {
         iocb* cb = free_iocbs.back();
         free_iocbs.pop_back();
@@ -117,16 +114,16 @@ void schedule_next_reads() {
         auto sz = std::min(src_sz - offset, aio_blocksize);
         io_prep_pread(cb, srcfd, cb->u.c.buf, sz, offset);
         io_set_callback(cb, CopyTask::read_done);
-        submit[num_submit++] = cb;
+	queued_iocbs.push_back(cb);
         offset += sz;
     }
 
-    if (io_submit(ctx, num_submit, submit) != num_submit) {
-        cerr << "failed to submit read" << endl;
-        exit(1);
-    } else if (num_submit > 1) {
-        if (verbose)
-            cout << "--> submitted " << num_submit << " reads" << endl;
+    // submit when we have max iocbs queued or we hit end of file
+    if (offset >= src_sz || queued_iocbs.size() == aio_iocb_count) {
+	int res = io_submit(ctx, queued_iocbs.size(), queued_iocbs.data());
+	if (verbose)
+		cout << "--> submitted " << res << " reads" << endl;
+	queued_iocbs.erase(queued_iocbs.begin(), queued_iocbs.begin() + res);
     }
 }
 
@@ -143,8 +140,6 @@ void handle_write(iocb* cb) {
     free_iocbs.push_back(cb);
 
     if (offset < src_sz) {
-        // TODO: there is still the case where a big file gets N CB's scheduled up front, then schedules additional ones 1-by-1.
-        // even so, there will always be N CB's in flight, so is this a real problem? this will invoke lots of fine-grained syscalls
         schedule_next_reads();
     } else if (free_iocbs.size() == aio_iocb_count) {
         // done: there is no more to copy and we are the last finishing iocb
