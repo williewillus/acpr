@@ -19,13 +19,25 @@ version of cp -r. Our implementation will take an existing directory name and a 
 copy the entire directory tree to the location specified.
 
 \section{Major Decisions}
+There were two major choices available to us for asynchronous file IO on Linux. The first was the \textbf{POSIX AIO} interface, which is standardized as a set of library calls across all POSIX-compliant environments. However, according to the man pages, glibc simulates POSIX AIO completely in userspace \cite{aio7}. This means that the kernel is not able to make scheduling and reordering decisions that may affect performance. Instead, we decided to use the nonportable \textbf{Linux AIO} system calls.
+
+For the implementation itself, \textbf{C++} was chosen as the programming language. In addition to being a fast systems programming language, it also provides useful abstractions and standard libraries, as well as access to the Boost libraries. The Boost Filesystem library was used for its \texttt{recursive\_directory\_iterator}, an iterator which yields all paths along a breadth-first traversal from a given root path. For each path, if the file is small enough, it is copied directly using a Boost call. This is because, below a certain point, the overhead of initializing and submitting an asynchronous IO task dominates the cost of simply using \texttt{read} and \texttt{write}. This threshold is configurable and the effects of varying it are explored in Section 4.
+
+A function critical to our implementation, \texttt{boost::filesystem::relativize}, was missing in the version of Boost installed on the lab computers. This function takes two absolute paths and makes one into a path relative to the other, so that it can be appended to the destination directory. We backported this function from later Boost versions by simply copying the relatively small implementation from the Boost source control.
 
 \section{Limitations}
+Attributes and ownership are currently not copied properly.
 
 \section{Evaluation}
 
 \section{Conclusion}
 
 \section{Time Spent}
+About 1.5 hours were spent researching the state of asynchronous IO, finding documentation for the chosen libraries, and setting up the build system of the project.
+
+\begin{thebibliography}{99}
+\bibitem{aio7}
+	aio(7), http://man7.org/linux/man-pages/man7/aio.7.html
+\end{thebibliography}
 
 \end{document}
