@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   long aio_timeout_ns = 5000000;
 
   int c = '0';
-  while ((c = getopt(argc, argv, "b:c:m:t:v")) != -1) {
+  while ((c = getopt(argc, argv, "b:c:m:n:t:v")) != -1) {
       switch (c) {
       case 'b': aio_blocksize = std::stoi(optarg) * 1024; break;
       case 'c': aio_iocb_count = std::stoi(optarg); break;
@@ -114,6 +114,8 @@ int main(int argc, char **argv) {
                 else if (destfd == -1)
                     perror("failed to open out file");
                 else {
+                    if (fallocate(destfd, 0, 0, s.st_size))
+			perror("failed to preallocate");
                     if (verbose)
                         cout << "--> Copying using AIO" << endl;
                     aio::copy(srcfd, destfd, s);
