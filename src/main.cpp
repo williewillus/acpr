@@ -116,6 +116,8 @@ int main(int argc, char **argv) {
                 else {
                     if (fallocate(destfd, 0, 0, s.st_size))
 			perror("failed to preallocate");
+		    if (readahead(srcfd, 0, s.st_size))
+			perror("failed to readahead");
                     if (verbose)
                         cout << "--> Copying using AIO" << endl;
                     aio::copy(srcfd, destfd, s);
