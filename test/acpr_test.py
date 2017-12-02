@@ -36,31 +36,41 @@ def check_correctness(fromdir, todir):
     if completed.returncode != 0:
         print("!!! Copy was incorrectly done, results are invalid !!!")
 
-def time_test(fromdir, todir):
-    cpr_start = timer()
-    subprocess.run([CPR, "-r", fromdir, todir], check=True)
-    cpr_time = timer() - cpr_start
+def time_test(fromdir, todir, stress):
+    stressproc = None
+    if stress:
+        stressproc = Popen([
+            "stress-ng",
+            "--temp-path", "/var/tmp/", # use local disk, not NFS
+            "--hdd", "-1", # hdd stress = number of cores
+            "--io", "-1",  # io stress (commit caches) = number of cores
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
-    shutil.rmtree(todir, ignore_errors=False)
+    cpr_start = timer()
+    subprocess.run([CPR, "-r", fromdir, todir + "_cp"], check=True)
+    cpr_time = timer() - cpr_start
 
     acpr_start = timer()
     subprocess.run([ACPR, fromdir, todir], check=True, stdout=sys.stderr)
     acpr_time = timer() - acpr_start
 
-    check_correctness(fromdir, todir)
+    if stress:
+        stressproc.kill()
 
+    check_correctness(fromdir, todir)
+    shutil.rmtree(todir + "_cp", ignore_errors=False)
     shutil.rmtree(todir, ignore_errors=False)
 
     return cpr_time, acpr_time
 
-def main(fromdir, todir, num_trials, timer, verbose=False):
+def main(fromdir, todir, num_trials, timer, stress=False, verbose=False):
     times = []
 
     with open("data_acpr.csv", "w") as outfile:
         outfile.write("\nTrial, CPR, ACPR\n")
 
         for i in range(num_trials):
-            cpr_time, acpr_time = time_test(fromdir, todir)
+            cpr_time, acpr_time = time_test(fromdir, todir, stress)
             outfile.write("{}, {:0.20f}, {:0.20f}\n".format(i, cpr_time, acpr_time))
             times.append((cpr_time, acpr_time))
 
@@ -84,6 +94,11 @@ if __name__ == "__main__":
             "-v", "--verbose",
             action="store_true",
             help="Verbose flag (Default: False)",
+            )
+    parser.add_argument(
+            "-s", "--stress",
+            action="store_true",
+            help="Run stress-ng in the background along with the copy (Default: False)",
             )
     parser.add_argument(
             "-n", "--num-trials",
@@ -124,7 +139,7 @@ if __name__ == "__main__":
             )
     parser.add_argument(
             "todir",
-            help="Output directory",
+            help="Output directory. Baseline cp -r test will use {todir}_cp.",
             )
 
     # Parse arguments and set flags
@@ -132,6 +147,8 @@ if __name__ == "__main__":
 
     fromdir = args.fromdir
     todir = args.todir
+    if todir.endswith("/"):
+        todir = todir[0:len(todir)-1]
     num_trials = int(args.num_trials)
 
     # Generate source directory tree if necessary
@@ -145,9 +162,14 @@ if __name__ == "__main__":
         print("Error: \"{}\" does not exist!".format(fromdir))
         sys.exit(1)
 
-    # Make sure todir is empty if it exists
+    # Make sure todir and todir_cp are empty if they exist
     if os.path.isdir(todir) and os.listdir(todir):
         print("Error: \"{}\" is not empty!".format(todir))
+        sys.exit(1)
+
+    todircp = todir + "_cp"
+    if os.path.isdir(todircp) and os.listdir(todircp):
+        print("Error: \"{}\" is not empty!".format(todircp))
         sys.exit(1)
 
     # Note: time.perf_counter includes sleep/blocked time while time.process_time does not
@@ -157,4 +179,4 @@ if __name__ == "__main__":
         print("fromdir: \"{}\", todir: \"{}\", num_trials: \"{}\", timer: \"{}\"".format(
             fromdir, todir, num_trials, args.timer[0]))
 
-    main(fromdir, todir, num_trials, timer, args.verbose)
+    main(fromdir, todir, num_trials, timer, args.stress, args.verbose)

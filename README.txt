@@ -7,6 +7,7 @@ Requirements
 ============
 - Boost Filesystem and System libraries, version 1.58 or higher
 - Python 3.5 or higher
+- stress-ng, if using the -s option of the test script
 
 Building
 ========
