@@ -31,6 +31,11 @@ def build_dir_tree(fromdir, depth, width):
     else:
         return
 
+def check_correctness(fromdir, todir):
+    completed = subprocess.run(["diff", "-r", fromdir, todir], stdout=sys.stderr)
+    if completed.returncode != 0:
+        print("!!! Copy was incorrectly done, results are invalid !!!")
+
 def time_test(fromdir, todir):
     cpr_start = timer()
     subprocess.run([CPR, "-r", fromdir, todir], check=True)
@@ -41,6 +46,8 @@ def time_test(fromdir, todir):
     acpr_start = timer()
     subprocess.run([ACPR, fromdir, todir], check=True, stdout=sys.stderr)
     acpr_time = timer() - acpr_start
+
+    check_correctness(fromdir, todir)
 
     shutil.rmtree(todir, ignore_errors=False)
 
