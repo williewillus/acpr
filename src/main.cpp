@@ -14,8 +14,16 @@ using std::endl;
 
 bool verbose = false;
 
-// libaio documentation (+ example of usage)
-// http://manpages.ubuntu.com/manpages/precise/en/man3/io.3.html
+static void print_usage() {
+  cout << "acpr [OPTIONS] <from> <to>" << endl;
+  cout << "  -b: How many KB to copy per AIO operation" << endl;
+  cout << "  -c: How many iocbs each file copy uses" << endl;
+  cout << "  -m: max_events for the AIO system" << endl;
+  cout << "  -n: How many ns to wait when polling for events" << endl;
+  cout << "  -t: Threshold to use AIO over normal copy, in bytes" << endl;
+  cout << "  -h: Display this message" << endl;
+  cout << "  -v: Enable verbose output" << endl;
+}
 
 int main(int argc, char **argv) {
   int aio_threshold = 1024; // todo reset this default higher after we're done tuning
@@ -25,13 +33,14 @@ int main(int argc, char **argv) {
   long aio_timeout_ns = 5000000;
 
   int c = '0';
-  while ((c = getopt(argc, argv, "b:c:m:n:t:v")) != -1) {
+  while ((c = getopt(argc, argv, "b:c:m:n:t:hv")) != -1) {
       switch (c) {
       case 'b': aio_blocksize = std::stoi(optarg) * 1024; break;
       case 'c': aio_iocb_count = std::stoi(optarg); break;
       case 'm': aio_max_events = std::stoi(optarg); break;
       case 'n': aio_timeout_ns = std::stol(optarg); break;
       case 't': aio_threshold = std::stoi(optarg); break;
+      case 'h': print_usage(); return 0;
       case 'v': verbose = true; break;
       default: throw std::runtime_error("Illegal option");
       }
@@ -47,10 +56,12 @@ int main(int argc, char **argv) {
     cout << "blksize " << aio_blocksize << endl;
     cout << "maxevt " << aio_max_events << endl;
     cout << "cbcount " << aio_iocb_count << endl;
+    cout << "timeout " << aio_timeout_ns << endl;
   }
 
   if (argc - optind < 2) {
       cout << "Missing src or dest file" << endl;
+      print_usage();
       return 1;
   }
 

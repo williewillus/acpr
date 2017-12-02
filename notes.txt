@@ -9,3 +9,4 @@ implementation notes and musings, to help with the report
 - boost filesystem lib on lab machines too outdated to have a specific call path::relativize, backported by copying from boost github
 - cmake used for build system, very helpful and "fire and forget"
 - C++ helpful
+- http://manpages.ubuntu.com/manpages/precise/en/man3/io.3.html
