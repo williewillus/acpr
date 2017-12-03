@@ -8,6 +8,7 @@ Requirements
 - Boost Filesystem and System libraries, version 1.58 or higher
 - Python 3.5 or higher
 - stress-ng, if using the -s option of the test script
+- sudo access
 
 Building
 ========
@@ -19,7 +20,7 @@ Building
 Testing
 =======
 - Within test/, execute `chmod +x acpr_test.py`
-- Within test/, run `./acpr_test.py [options] src_dir dest_dir`
+- Within test/, run `sudo ./acpr_test.py [options] src_dir dest_dir`
 
 Cleaning
 ========

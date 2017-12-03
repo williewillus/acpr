@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import shutil
+import random
 import argparse
 import subprocess
 import numpy as np
@@ -13,42 +14,66 @@ import numpy as np
 CPR = "/bin/cp"
 ACPR = "../build/acpr"
 
+random.seed(0)
+
 # Adapted from: https://gist.github.com/samuelsh/b837f8ab8b33c344f01128568dd12019
-def build_dir_tree(fromdir, depth, width):
+def build_dir_tree(fromdir, depth, width, file_size, random):
     if depth >= 0:
         curr_depth = depth
         depth -= 1
 
         for i in range(width):
-            os.makedirs("{}/Dir_#{}_level_{}".format(fromdir, i, curr_depth), exist_ok=True)
-            subprocess.run("", shell=True)
+            if random:
+                rand = random.randint(0, 1)
+
+                if rand:
+                    os.makedirs("{}/Dir_#{}_level_{}".format(fromdir, i, curr_depth), exist_ok=True)
+
+                    rand = random.randint(0, 1)
+                    if rand:
+                        subprocess.run("head -c {} < /dev/urandom > {}/Dir_#{}_level_{}/File".format(
+                                        file_size, fromdir, i, curr_depth), shell=True)
+
+            else:
+                os.makedirs("{}/Dir_#{}_level_{}".format(fromdir, i, curr_depth), exist_ok=True)
+                subprocess.run("head -c {} < /dev/urandom > {}/Dir_#{}_level_{}/File".format(
+                                file_size, fromdir, i, curr_depth), shell=True)
 
         dirs = next(os.walk(fromdir))[1]
 
         for dir in dirs:
             newbase = os.path.join(fromdir, dir)
-            build_dir_tree(newbase, depth, width)
+            build_dir_tree(newbase, depth, width, file_size, random)
     else:
         return
+
+def clear_caches():
+    subprocess.run("sync; echo 3 > /proc/sys/vm/drop_caches", shell=True)
 
 def check_correctness(fromdir, todir):
     completed = subprocess.run(["diff", "-r", fromdir, todir], stdout=sys.stderr)
     if completed.returncode != 0:
         print("!!! Copy was incorrectly done, results are invalid !!!")
 
-def time_test(fromdir, todir, stress):
+def time_test(fromdir, todir, clear, stress):
     stressproc = None
     if stress:
-        stressproc = Popen([
+        stressproc = subprocess.Popen([
             "stress-ng",
             "--temp-path", "/var/tmp/", # use local disk, not NFS
             "--hdd", "-1", # hdd stress = number of cores
             "--io", "-1",  # io stress (commit caches) = number of cores
         ], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
+    if clear:
+        clear_caches()
+
     cpr_start = timer()
     subprocess.run([CPR, "-r", fromdir, todir + "_cp"], check=True)
     cpr_time = timer() - cpr_start
+
+    if clear:
+        clear_caches()
 
     acpr_start = timer()
     subprocess.run([ACPR, fromdir, todir], check=True, stdout=sys.stderr)
@@ -63,14 +88,14 @@ def time_test(fromdir, todir, stress):
 
     return cpr_time, acpr_time
 
-def main(fromdir, todir, num_trials, timer, stress=False, verbose=False):
+def main(fromdir, todir, num_trials, timer, clear=False, stress=False, verbose=False):
     times = []
 
     with open("data_acpr.csv", "w") as outfile:
         outfile.write("\nTrial, CPR, ACPR\n")
 
         for i in range(num_trials):
-            cpr_time, acpr_time = time_test(fromdir, todir, stress)
+            cpr_time, acpr_time = time_test(fromdir, todir, clear, stress)
             outfile.write("{}, {:0.20f}, {:0.20f}\n".format(i, cpr_time, acpr_time))
             times.append((cpr_time, acpr_time))
 
@@ -99,6 +124,11 @@ if __name__ == "__main__":
             "-s", "--stress",
             action="store_true",
             help="Run stress-ng in the background along with the copy (Default: False)",
+            )
+    parser.add_argument(
+            "-c", "--clear",
+            action="store_true",
+            help="Clear page and file caches before each test run (Default: False)",
             )
     parser.add_argument(
             "-n", "--num-trials",
@@ -131,6 +161,17 @@ if __name__ == "__main__":
             default=3,
             help="Generated width (Default: 3)",
             )
+    parser.add_argument(
+            "-r", "--random",
+            action="store_true",
+            help="Random directory creation (Default: False)",
+            )
+    parser.add_argument(
+            "-f", "--file-size",
+            type=int,
+            default=1024,
+            help="Size of generated files (Default: 1024)",
+            )
 
     # Positional Arguments
     parser.add_argument(
@@ -155,7 +196,8 @@ if __name__ == "__main__":
     if args.generate:
         depth = int(args.depth)
         width = int(args.width)
-        build_dir_tree(fromdir, depth, width)
+        file_size = int(args.file_size)
+        build_dir_tree(fromdir, depth, width, file_size, random)
 
     # Otherwise, make sure fromdir exists and is not empty
     elif not os.path.isdir(fromdir) and os.listdir(fromdir):
@@ -176,7 +218,6 @@ if __name__ == "__main__":
     timer = time.process_time if args.timer[0] == "process" else time.perf_counter
 
     if args.verbose:
-        print("fromdir: \"{}\", todir: \"{}\", num_trials: \"{}\", timer: \"{}\"".format(
-            fromdir, todir, num_trials, args.timer[0]))
+        print(args)
 
-    main(fromdir, todir, num_trials, timer, args.stress, args.verbose)
+    main(fromdir, todir, num_trials, timer, args.clear, args.stress, args.verbose)
