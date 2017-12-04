@@ -20,6 +20,7 @@ unsigned int aio_iocb_count = 5;
 long aio_timeout_ns = 5000000;
 bool aio_fallocate = false;
 bool aio_readahead = false;
+bool aio_fsync = false;
 
 static void print_usage() {
   cout << "acpr [OPTIONS] <from> <to>" << endl;
@@ -32,11 +33,12 @@ static void print_usage() {
   cout << "  -r: Use readahead before copy" << endl;
   cout << "  -h: Display this message" << endl;
   cout << "  -v: Enable verbose output" << endl;
+  cout << "  -s: Call fsync after finishing a copy (cp doesn't do this)" << endl;
 }
 
 int main(int argc, char **argv) {
   int c = '0';
-  while ((c = getopt(argc, argv, "b:c:m:n:t:hfrv")) != -1) {
+  while ((c = getopt(argc, argv, "b:c:m:n:t:hfrvs")) != -1) {
       switch (c) {
       case 'b': aio_blocksize = std::stoi(optarg) * 1024; break;
       case 'c': aio_iocb_count = std::stoi(optarg); break;
@@ -47,6 +49,7 @@ int main(int argc, char **argv) {
       case 'f': aio_fallocate = true; break;
       case 'r': aio_readahead = true; break;
       case 'v': verbose = true; break;
+      case 's': aio_fsync = true; break;
       default: throw std::runtime_error("Illegal option");
       }
   }

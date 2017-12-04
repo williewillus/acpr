@@ -80,6 +80,19 @@
     \end{enumerate}
 \end{frame}
 
+\begin{frame}
+\frametitle{Major Decisions and Challenges}
+\begin{enumerate}[1.]
+	\item{Cheating fsync}
+	\begin{itemize}
+		\item{Trying to copy Linux 4.4 source (711 MB). cp: 1 second, acpr: 7 minutes+}
+		\item{Turns out cp does not fsync anything after finishing (verified using strace)}
+		\item{So we turned it off as well, adding a flag to reenable it}
+		\item{acpr now copies Linux 4.4 tree in a respectable 3 seconds with default flags}
+	\end{itemize}
+\end{enumerate}
+\end{frame}
+
 \section{Limitations}
 \begin{frame}
     \frametitle{Limitations}

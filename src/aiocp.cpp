@@ -21,6 +21,7 @@ extern unsigned int aio_iocb_count;
 extern long aio_timeout_ns;
 extern bool aio_fallocate;
 extern bool aio_readahead;
+extern bool aio_fsync;
 
 namespace aio {
 
@@ -96,7 +97,8 @@ CopyTask(int srcfd, int destfd, off_t src_sz)
 ~CopyTask() {
     ::close(srcfd);
 
-    ::fsync(destfd);
+    if (aio_fsync)
+        ::fsync(destfd);
     ::close(destfd);
 
     assert(free_iocbs.size() == aio_iocb_count);

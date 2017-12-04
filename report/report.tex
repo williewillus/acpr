@@ -58,9 +58,11 @@ every single one. We replaced calls to this function with direct system calls to
 read the event queue ourselves, resulting in about 64 events per system call
 instead of 1.
 
+During early testing, we attempted to copy the Linux 4.4 kernel tree, a 711 megabyte repository of mostly small files. acpr used over 7 minutes before it was killed, while cp used only 1 second. Some profiling indicated that the AIO subsystem finished very quickly, it was the \texttt{fsync} call for each file that slowed everything down. Disabling the \texttt{fsync} by default sped the copy up to about 3 seconds. We verified that \texttt{cp} also chose not to call it by observing the system calls it made using \texttt{strace}.
+
 \section{Limitations}
 
-Attributes and ownership are currently not copied properly.
+Attributes and ownership are currently not copied properly. Symbolic links are skipped.
 
 \section{Evaluation}
 
