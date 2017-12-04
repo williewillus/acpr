@@ -14,11 +14,13 @@ using std::cerr;
 using std::endl;
 
 extern bool verbose;
-
-static off_t aio_blocksize;
-static unsigned int aio_iocb_count;
-static int aio_max_events;
-static long aio_timeout_ns;
+extern int aio_threshold;
+extern off_t aio_blocksize;
+extern unsigned int aio_max_events;
+extern unsigned int aio_iocb_count;
+extern long aio_timeout_ns;
+extern bool aio_fallocate;
+extern bool aio_readahead;
 
 namespace aio {
 
@@ -154,12 +156,8 @@ void handle_write(iocb* cb) {
 
 std::map<iocb*, CopyTask*> CopyTask::tasks;
 
-void init(int blocksize, int max_events, int iocb_count, long timeout_ns) {
-    aio_blocksize = blocksize;
-    aio_max_events = max_events;
-    io_queue_init(max_events, &ctx);
-    aio_iocb_count = iocb_count;
-    aio_timeout_ns = timeout_ns;    
+void init() {
+    io_queue_init(aio_max_events, &ctx);
 }
 
 void cleanup() {

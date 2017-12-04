@@ -13,6 +13,13 @@ using std::cout;
 using std::endl;
 
 bool verbose = false;
+int aio_threshold = 1024; // todo reset this default higher after we're done tuning
+off_t aio_blocksize = 64 * 1024;
+unsigned int aio_max_events = 32;
+unsigned int aio_iocb_count = 5;
+long aio_timeout_ns = 5000000;
+bool aio_fallocate = false;
+bool aio_readahead = false;
 
 static void print_usage() {
   cout << "acpr [OPTIONS] <from> <to>" << endl;
@@ -28,22 +35,14 @@ static void print_usage() {
 }
 
 int main(int argc, char **argv) {
-  int aio_threshold = 1024; // todo reset this default higher after we're done tuning
-  int aio_blocksize = 64 * 1024;
-  int aio_max_events = 32;
-  int aio_iocb_count = 5;
-  long aio_timeout_ns = 5000000;
-  bool aio_fallocate = false;
-  bool aio_readahead = false;
-
   int c = '0';
   while ((c = getopt(argc, argv, "b:c:m:n:t:hfrv")) != -1) {
       switch (c) {
       case 'b': aio_blocksize = std::stoi(optarg) * 1024; break;
       case 'c': aio_iocb_count = std::stoi(optarg); break;
-      case 'm': aio_max_events = std::stoi(optarg); break;
-      case 'n': aio_timeout_ns = std::stol(optarg); break;
-      case 't': aio_threshold = std::stoi(optarg); break;
+      case 'm': aio_max_events = std::stoul(optarg); break;
+      case 'n': aio_timeout_ns = std::stoul(optarg); break;
+      case 't': aio_threshold = std::stoul(optarg); break;
       case 'h': print_usage(); return 0;
       case 'f': aio_fallocate = true; break;
       case 'r': aio_readahead = true; break;
@@ -75,7 +74,7 @@ int main(int argc, char **argv) {
 
   const path src { argv[optind] };
   const path dest { argv[optind + 1] };
-  aio::init(aio_blocksize, aio_max_events, aio_iocb_count, aio_timeout_ns);
+  aio::init();
 
   struct stat s;
   if (::stat(dest.string().c_str(), &s) < 0) {

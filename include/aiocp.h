@@ -3,7 +3,7 @@
 
 namespace aio {
 
-void init(int blocksize, int max_events, int iocb_count, long aio_timeout_ns);
+void init();
 
 void cleanup();
 
