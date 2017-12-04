@@ -21,6 +21,8 @@ static void print_usage() {
   cout << "  -m: max_events for the AIO system" << endl;
   cout << "  -n: How many ns to wait when polling for events" << endl;
   cout << "  -t: Threshold to use AIO over normal copy, in bytes" << endl;
+  cout << "  -f: Call fallocate before copy" << endl;
+  cout << "  -r: Use readahead before copy" << endl;
   cout << "  -h: Display this message" << endl;
   cout << "  -v: Enable verbose output" << endl;
 }
@@ -31,9 +33,11 @@ int main(int argc, char **argv) {
   int aio_max_events = 32;
   int aio_iocb_count = 5;
   long aio_timeout_ns = 5000000;
+  bool aio_fallocate = false;
+  bool aio_readahead = false;
 
   int c = '0';
-  while ((c = getopt(argc, argv, "b:c:m:n:t:hv")) != -1) {
+  while ((c = getopt(argc, argv, "b:c:m:n:t:hfrv")) != -1) {
       switch (c) {
       case 'b': aio_blocksize = std::stoi(optarg) * 1024; break;
       case 'c': aio_iocb_count = std::stoi(optarg); break;
@@ -41,6 +45,8 @@ int main(int argc, char **argv) {
       case 'n': aio_timeout_ns = std::stol(optarg); break;
       case 't': aio_threshold = std::stoi(optarg); break;
       case 'h': print_usage(); return 0;
+      case 'f': aio_fallocate = true; break;
+      case 'r': aio_readahead = true; break;
       case 'v': verbose = true; break;
       default: throw std::runtime_error("Illegal option");
       }
@@ -57,6 +63,8 @@ int main(int argc, char **argv) {
     cout << "maxevt " << aio_max_events << endl;
     cout << "cbcount " << aio_iocb_count << endl;
     cout << "timeout " << aio_timeout_ns << endl;
+    cout << "fallocate " << aio_fallocate << endl;
+    cout << "readahead " << aio_readahead << endl;
   }
 
   if (argc - optind < 2) {
@@ -125,10 +133,10 @@ int main(int argc, char **argv) {
                 else if (destfd == -1)
                     perror("failed to open out file");
                 else {
-                    if (fallocate(destfd, 0, 0, s.st_size))
-			perror("failed to preallocate");
-		    if (readahead(srcfd, 0, s.st_size))
-			perror("failed to readahead");
+                    if (aio_fallocate && fallocate(destfd, 0, 0, s.st_size))
+                        perror("failed to preallocate");
+                    if (aio_readahead && readahead(srcfd, 0, s.st_size))
+                        perror("failed to readahead");
                     if (verbose)
                         cout << "--> Copying using AIO" << endl;
                     aio::copy(srcfd, destfd, s);

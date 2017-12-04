@@ -55,7 +55,7 @@ def check_correctness(fromdir, todir):
     if completed.returncode != 0:
         print("!!! Copy was incorrectly done, results are invalid !!!")
 
-def time_test(fromdir, todir, clear, stress):
+def time_test(fromdir, todir, clear, stress, nargs):
     stressproc = None
     if stress:
         stressproc = subprocess.Popen([
@@ -76,7 +76,7 @@ def time_test(fromdir, todir, clear, stress):
         clear_caches()
 
     acpr_start = timer()
-    subprocess.run([ACPR, fromdir, todir], check=True, stdout=sys.stderr)
+    subprocess.run([ACPR, fromdir, todir, *nargs], check=True, stdout=sys.stderr)
     acpr_time = timer() - acpr_start
 
     if stress:
@@ -88,14 +88,14 @@ def time_test(fromdir, todir, clear, stress):
 
     return cpr_time, acpr_time
 
-def main(fromdir, todir, num_trials, timer, clear=False, stress=False, verbose=False):
+def main(fromdir, todir, num_trials, timer, clear=False, stress=False, verbose=False, nargs=""):
     times = []
 
     with open("data_acpr.csv", "w") as outfile:
         outfile.write("\nTrial, CPR, ACPR\n")
 
         for i in range(num_trials):
-            cpr_time, acpr_time = time_test(fromdir, todir, clear, stress)
+            cpr_time, acpr_time = time_test(fromdir, todir, clear, stress, nargs)
             outfile.write("{}, {:0.20f}, {:0.20f}\n".format(i, cpr_time, acpr_time))
             times.append((cpr_time, acpr_time))
 
@@ -172,6 +172,12 @@ if __name__ == "__main__":
             default=1024,
             help="Size of generated files (Default: 1024)",
             )
+    parser.add_argument(
+            "--args",
+            dest="nargs",
+            nargs=argparse.REMAINDER,
+            help="Supply arguments to acpr",
+            )
 
     # Positional Arguments
     parser.add_argument(
@@ -220,4 +226,7 @@ if __name__ == "__main__":
     if args.verbose:
         print(args)
 
-    main(fromdir, todir, num_trials, timer, args.clear, args.stress, args.verbose)
+    # Pass extra arguments to acpr
+    nargs = "" if args.nargs is None else args.nargs
+
+    main(fromdir, todir, num_trials, timer, args.clear, args.stress, args.verbose, nargs)
