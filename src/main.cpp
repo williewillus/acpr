@@ -77,6 +77,20 @@ int main(int argc, char **argv) {
   const path dest { argv[optind + 1] };
   aio::init(aio_blocksize, aio_max_events, aio_iocb_count, aio_timeout_ns);
 
+  struct stat s;
+  if (::stat(dest.string().c_str(), &s) < 0) {
+      /* create dest directory if it doesn't already exist
+       * to match cp -r default behavior
+       */
+      if(::stat(src.string().c_str(), &s) < 0) {
+          perror("src dir does not exist");
+          exit(EXIT_FAILURE);
+      }
+      if (!mkdir(dest.string().c_str(), s.st_mode))
+          if (verbose)
+              cout << "+ made dir " << dest << endl;
+  }
+
   const recursive_directory_iterator end = {};
   for (auto iter = recursive_directory_iterator{src}; iter != end; iter++) {
     const path& p_src = iter->path();
@@ -84,25 +98,10 @@ int main(int argc, char **argv) {
     const path p_dest = dest / relative;
 
     if (verbose)
-        cout << "-> should copy " << p_src << " to " << p_dest << endl;
+        cout << "-> should copy " << p_src << " to " << p_dest << endl;    
 
-    struct stat s;
-
-    if (::stat(dest.string().c_str(), &s) < 0) {
-        /* create dest directory if it doesn't already exist
-         * to match cp -r default behavior
-         */
-        if(::stat(src.string().c_str(), &s) < 0) {
-            perror("src dir does not exist");
-            exit(EXIT_FAILURE);
-        }
-        if (!mkdir(dest.string().c_str(), s.st_mode))
-            if (verbose)
-                cout << "+ made dir " << dest << endl;
-    }
-
-    if (::stat(p_src.string().c_str(), &s) == 0) {
-        if (s.st_mode & S_IFDIR) {
+    if (::lstat(p_src.string().c_str(), &s) == 0) {
+        if (S_ISDIR(s.st_mode)) {
             /* create dir and copy all metadata
              * we can do this here becuase recursive_directory_iterator is breadth-first (dirs before contents)
              * and we want to ensure dirs exist before copying
@@ -116,7 +115,7 @@ int main(int argc, char **argv) {
                 perror(msg.c_str());
                 return 1;
             }
-        } else if (s.st_mode & S_IFREG) {
+        } else if (S_ISREG(s.st_mode) && !S_ISLNK(s.st_mode)) {
             /* open src/dest file and copy all metadata
              * if file is small enough, copy directly, otherwise spawn AIO task
              */
