@@ -127,7 +127,8 @@ void schedule_next_reads() {
 	int res = io_submit(ctx, queued_iocbs.size(), queued_iocbs.data());
 	if (verbose)
 		cout << "--> submitted " << res << " reads" << endl;
-	queued_iocbs.erase(queued_iocbs.begin(), queued_iocbs.begin() + res);
+    if (res > 0)
+        queued_iocbs.erase(queued_iocbs.begin(), queued_iocbs.begin() + res);
     }
 }
 
