@@ -25,7 +25,7 @@ static void print_usage() {
   cout << "acpr [OPTIONS] <from> <to>" << endl;
   cout << "  -b: How many KB to copy per AIO operation, default 64K" << endl;
   cout << "  -c: How many iocbs each file copy uses, default 5" << endl;
-  cout << "  -n: How many ns to wait when polling for events, default 5000000" << endl;
+  cout << "  -n: How many ns to wait when polling for events, default 5000000 (5 ms)" << endl;
   cout << "  -t: Threshold to use AIO over normal copy, in bytes, default 1K" << endl;
   cout << "  -f: Call fallocate before copy, default false" << endl;
   cout << "  -r: Use readahead before copy, default false" << endl;
