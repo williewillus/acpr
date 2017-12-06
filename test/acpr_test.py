@@ -141,7 +141,7 @@ if __name__ == "__main__":
             nargs=1,
             type=str,
             choices=["perf", "process"],
-            default=["process"],
+            default=["perf"],
             help="Timer type (Default: process)",
             )
     parser.add_argument(
