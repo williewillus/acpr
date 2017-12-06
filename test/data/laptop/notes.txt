@@ -34,6 +34,29 @@ lubuntu_512K.csv =>
 	Program, Mean (μs), Std (μs), Throughput (MB/s)
 	CPR, 3143453.47019998403266072273, 460737.59672082477482035756, 279.9481253953522
 	ACPR, 4357555.50980002246797084808, 1085805.38581998739391565323, 201.94898361498676
+lubuntu_0ms.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/image ~/image_copy --args -n 0 
+	sync and clear caches before each copy
+	unlimited/no timeout to receive events while running
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 2582029.32830026838928461075, 240765.50052356539526954293, 340.81871054086764
+	ACPR, 3268530.98690044134855270386, 267887.44507565390085801482, 269.23529554312427
+
+lubuntu_1ms.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/image ~/image_copy --args -n 1000000 
+	sync and clear caches before each copy
+	1 ms timeout to receive events while running
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 2911620.34920052997767925262, 452534.76614779792726039886, 302.23854785588054
+	ACPR, 3230483.82870074408128857613, 161400.65996972579159773886, 272.4062254798302
+
+lubuntu_10ms.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/image ~/image_copy --args -n 10000000
+	sync and clear caches before each copy
+	10 ms timeout to receive events while running
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 3105996.67810129188001155853, 1160256.49341067415662109852, 283.3241620811874
+	ACPR, 3810993.76130041480064392090, 1849799.14476204849779605865, 230.91192517452944
 
 linux_default.csv =>
 	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy
