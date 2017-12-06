@@ -41,3 +41,23 @@ linux_default.csv =>
 	Program, Mean (μs), Std (μs), Throughput (MB/s)
 	CPR, 12750656.43310026638209819794, 2182349.19508508080616593361, 46.487709462788615
 	ACPR, 15057027.71639989688992500305, 492189.17076124268351122737, 39.36692040994175	
+
+linux_threshold4K.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy --args -t 4096
+	sync and clear caches before each copy
+	only use AIO for files above 4K (there are 25984 such files in the folder
+	)
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 9895024.76489988155663013458, 1157460.93136031436733901501, 59.90372190117497
+	ACPR, 13697036.19009996950626373291, 158623.34962570475181564689, 43.27569873475493
+
+linux_threshold8K.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy --args -t 8192 
+	sync and clear caches before each copy
+	only use AIO for files above 8K (there are 16914 such files in the folder
+	)
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 9956586.11780017986893653870, 161371.99390543921617791057, 59.53333850666923
+	ACPR, 13691114.76500038430094718933, 82783.27765992574859410524, 43.29441553123853
+
+
