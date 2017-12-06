@@ -159,7 +159,7 @@ void handle_write(iocb* cb) {
 std::map<iocb*, CopyTask*> CopyTask::tasks;
 
 void init() {
-    io_queue_init(aio_max_events, &ctx);
+    io_queue_init(32, &ctx);
 }
 
 void cleanup() {

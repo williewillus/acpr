@@ -15,7 +15,6 @@ using std::endl;
 bool verbose = false;
 int aio_threshold = 1024; // todo reset this default higher after we're done tuning
 off_t aio_blocksize = 64 * 1024;
-unsigned int aio_max_events = 32;
 unsigned int aio_iocb_count = 5;
 long aio_timeout_ns = 5000000;
 bool aio_fallocate = false;
@@ -26,7 +25,6 @@ static void print_usage() {
   cout << "acpr [OPTIONS] <from> <to>" << endl;
   cout << "  -b: How many KB to copy per AIO operation, default 64K" << endl;
   cout << "  -c: How many iocbs each file copy uses, default 5" << endl;
-  cout << "  -m: max_events for the AIO system, default 32" << endl;
   cout << "  -n: How many ns to wait when polling for events, default 5000000" << endl;
   cout << "  -t: Threshold to use AIO over normal copy, in bytes, default 1K" << endl;
   cout << "  -f: Call fallocate before copy, default false" << endl;
@@ -38,11 +36,10 @@ static void print_usage() {
 
 int main(int argc, char **argv) {
   int c = '0';
-  while ((c = getopt(argc, argv, "b:c:m:n:t:hfrvs")) != -1) {
+  while ((c = getopt(argc, argv, "b:c:n:t:hfrvs")) != -1) {
       switch (c) {
       case 'b': aio_blocksize = std::stoi(optarg) * 1024; break;
       case 'c': aio_iocb_count = std::stoi(optarg); break;
-      case 'm': aio_max_events = std::stoul(optarg); break;
       case 'n': aio_timeout_ns = std::stoul(optarg); break;
       case 't': aio_threshold = std::stoul(optarg); break;
       case 'h': print_usage(); return 0;
@@ -56,13 +53,11 @@ int main(int argc, char **argv) {
 
   assert(aio_threshold > 0);
   assert(aio_blocksize > 0);
-  assert(aio_max_events > 0);
   assert(aio_iocb_count > 0);
 
   if (verbose) {
     cout << "threshold " << aio_threshold << endl;
     cout << "blksize " << aio_blocksize << endl;
-    cout << "maxevt " << aio_max_events << endl;
     cout << "cbcount " << aio_iocb_count << endl;
     cout << "timeout " << aio_timeout_ns << endl;
     cout << "fallocate " << aio_fallocate << endl;
