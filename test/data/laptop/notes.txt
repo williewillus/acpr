@@ -91,3 +91,27 @@ linux_cb32.csv =>
 	CPR, 10485284.55970008485019207001, 760903.65950194571632891893, 56.5314950058691
 	ACPR, 17230868.66809990257024765015, 304602.18467973585939034820, 34.4004021584343
 
+linux_1ms.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy --args -n 1000000
+	sync and clear caches before each copy
+	10 ms to receive events while running
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 9615166.70450000651180744171, 190335.66894697846146300435, 61.64727351470553
+	ACPR, 14130190.52979998476803302765, 236843.64395583479199558496, 41.94910255963776
+
+linux_10ms.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy --args -n 10000000
+	sync and clear caches before each copy
+	10 ms timeout to receive events while running
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 10217370.16400002129375934601, 962320.94922493782360106707, 58.013833521496416
+	ACPR, 14528302.53660031221807003021, 559334.37371825834270566702, 40.7995917092533
+
+linux_0ms.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy --args -n 0
+	sync and clear caches before each copy
+	unlimited/no timeout to receive events while running
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 10197738.54009963572025299072, 564376.54711399367079138756, 58.12551571027143
+	ACPR, 14467722.33569990843534469604, 342439.80886692513013258576, 40.97043044979935
+
