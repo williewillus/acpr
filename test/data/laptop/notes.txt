@@ -1,0 +1,43 @@
+lubuntu_default.csv => 
+	sudo ./acpr_test.py -n 10 -vc ~/image ~/image_copy
+	sync and clear caches before each copy
+	image contains a 880M ISO of lubuntu-16.04.2-desktop.amd64.iso
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 3493708.89009996969252824783, 259852.54067525142454542220, 251.88243609639136
+	ACPR, 9080982.50090001709759235382, 3503955.54058684548363089561, 96.90624402841682
+lubuntu_fallocate-readahead.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/image ~/image_copy --args -fr
+	sync and clear caches before each copy
+	fallocate and readahead before copying
+	image contains a 880M ISO of lubuntu-16.04.2-desktop.amd64.iso
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 3309165.06289995601400732994, 240741.03282456038868986070, 265.92928715342373
+	ACPR, 3750832.42759997118264436722, 628877.67890286527108401060, 234.6156281935219
+lubuntu_128K.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/image ~/image_copy --args -b 128
+	sync and clear caches before each copy
+	Copy 128K per AIO operation
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 3383015.79190010670572519302, 744554.48424472601618617773, 260.12409056941954
+	ACPR, 5643682.20359997451305389404, 4333056.74534988682717084885, 155.92726069668944
+lubuntu_256K.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/image ~/image_copy --args -b 256 
+	sync and clear caches before each copy
+	Copy 256K per AIO operation
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 3092420.99170000990852713585, 207185.48738272319315001369, 284.5679513274264
+	ACPR, 3554007.71019999450072646141, 187085.99771689629415050149, 247.60889058411178
+lubuntu_512K.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/image ~/image_copy --args -b 512
+	sync and clear caches before each copy
+	Copy 512K per AIO operation
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 3143453.47019998403266072273, 460737.59672082477482035756, 279.9481253953522
+	ACPR, 4357555.50980002246797084808, 1085805.38581998739391565323, 201.94898361498676
+
+linux_default.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy
+	sync and clear caches before each copy
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 12750656.43310026638209819794, 2182349.19508508080616593361, 46.487709462788615
+	ACPR, 15057027.71639989688992500305, 492189.17076124268351122737, 39.36692040994175	

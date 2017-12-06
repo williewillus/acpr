@@ -53,7 +53,7 @@ def clear_caches():
 def check_correctness(fromdir, todir):
     completed = subprocess.run(["diff", "-r", fromdir, todir], stdout=sys.stderr)
     if completed.returncode != 0:
-        print("!!! Copy was incorrectly done, results are invalid !!!")
+        print("!!! diff -r returned differences, dir either contains symlinks or copy is incorrect !!!")
 
 def time_test(fromdir, todir, clear, stress, nargs):
     stressproc = None

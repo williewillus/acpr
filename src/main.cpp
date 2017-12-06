@@ -24,16 +24,16 @@ bool aio_fsync = false;
 
 static void print_usage() {
   cout << "acpr [OPTIONS] <from> <to>" << endl;
-  cout << "  -b: How many KB to copy per AIO operation" << endl;
-  cout << "  -c: How many iocbs each file copy uses" << endl;
-  cout << "  -m: max_events for the AIO system" << endl;
-  cout << "  -n: How many ns to wait when polling for events" << endl;
-  cout << "  -t: Threshold to use AIO over normal copy, in bytes" << endl;
-  cout << "  -f: Call fallocate before copy" << endl;
-  cout << "  -r: Use readahead before copy" << endl;
+  cout << "  -b: How many KB to copy per AIO operation, default 64K" << endl;
+  cout << "  -c: How many iocbs each file copy uses, default 5" << endl;
+  cout << "  -m: max_events for the AIO system, default 32" << endl;
+  cout << "  -n: How many ns to wait when polling for events, default 5000000" << endl;
+  cout << "  -t: Threshold to use AIO over normal copy, in bytes, default 1K" << endl;
+  cout << "  -f: Call fallocate before copy, default false" << endl;
+  cout << "  -r: Use readahead before copy, default false" << endl;
   cout << "  -h: Display this message" << endl;
-  cout << "  -v: Enable verbose output" << endl;
-  cout << "  -s: Call fsync after finishing a copy (cp doesn't do this)" << endl;
+  cout << "  -v: Enable verbose output, default false" << endl;
+  cout << "  -s: Call fsync after finishing a copy (cp doesn't do this), default false" << endl;
 }
 
 int main(int argc, char **argv) {
