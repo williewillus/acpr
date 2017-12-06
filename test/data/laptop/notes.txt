@@ -45,8 +45,7 @@ linux_default.csv =>
 linux_threshold4K.csv =>
 	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy --args -t 4096
 	sync and clear caches before each copy
-	only use AIO for files above 4K (there are 25984 such files in the folder
-	)
+	only use AIO for files above 4K (there are 25984 such files in the folder)
 	Program, Mean (μs), Std (μs), Throughput (MB/s)
 	CPR, 9895024.76489988155663013458, 1157460.93136031436733901501, 59.90372190117497
 	ACPR, 13697036.19009996950626373291, 158623.34962570475181564689, 43.27569873475493
@@ -54,10 +53,25 @@ linux_threshold4K.csv =>
 linux_threshold8K.csv =>
 	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy --args -t 8192 
 	sync and clear caches before each copy
-	only use AIO for files above 8K (there are 16914 such files in the folder
-	)
+	only use AIO for files above 8K (there are 16914 such files in the folder)
 	Program, Mean (μs), Std (μs), Throughput (MB/s)
 	CPR, 9956586.11780017986893653870, 161371.99390543921617791057, 59.53333850666923
 	ACPR, 13691114.76500038430094718933, 82783.27765992574859410524, 43.29441553123853
 
+
+linux_32K.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy --args -b 32
+	sync and clear caches before each copy
+	Copy 32K per AIO operation
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 10470331.66489982232451438904, 1762076.55004268302582204342, 56.61222879012525
+	ACPR, 14378681.39010024629533290863, 159918.89205610009958036244, 41.22414257888144
+
+linux_16K.csv =>
+	sudo ./acpr_test.py -n 10 -vc ~/CS/linux-4.4.97 ~/CS/linux-4.4.97_copy --args -b 16
+	sync and clear caches before each copy
+	Copy 16K per AIO operation
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 9787463.42109971120953559875, 124388.05162985771312378347, 60.56204618287105
+	ACPR, 14368911.95230000466108322144, 97901.20861099644389469177, 41.2521709152043
 
