@@ -20,7 +20,7 @@ an optimized version of cp -r. Our implementation will take an existing
 directory name and a new name and copy the entire directory tree to the location
 specified.
 
-\section{Major Decisions and Challenges} 
+\section{Major Decisions} 
 
 There were two major choices available to us for asynchronous file IO on Linux.
 The first was the \textbf{POSIX AIO} interface, which is standardized as a set
@@ -40,8 +40,19 @@ file is small enough, it is copied directly using a Boost call. This is because,
 below a certain point, the overhead of initializing and submitting an
 asynchronous IO task dominates the cost of simply using \texttt{read} and
 \texttt{write}. This threshold is configurable and the effects of varying it are
-explored in Section 4.
+explored in the Evaluation.
 
+\section{Implementation}
+After parsing all arguments, \texttt{acpr} initializes a recursive directory iterator from Boost, which yields a breadth-first traversal of every path in the given source directory. For each path, we run \texttt{lstat} to discover if it is a file or directory. If a directory, we create it immediately in the output path with \texttt{mkdir}. Since the iterator is breadth-first, we are guaranteed that all parent directories exist at the time of calling. If a file and it is below the AIO threshold, we copy it using a boost utility function implemented with \texttt{read} and \texttt{write}. Otherwise, we use the AIO system.
+
+\subsection{AIO Copying}
+A copy of a single file using AIO is represented by a class \texttt{CopyTask}. This class encapsulates the state of each copy, as well as a fixed number of  \texttt{iocb}'s. An \texttt{iocb} is the AIO system's unit of work. Each time \texttt{CopyTask::schedule\_next\_read} is called, we scan to see if there are any free \texttt{iocb}'s, and attach to each of them offsets to read, a file descriptor to read from, a buffer to read into, and a callback to invoke when complete. Once enough \texttt{iocb}'s have been buffered, the system call \texttt{io\_submit} is invoked, passing all initialized \texttt{iocb}'s to the kernel. 
+
+At the end of each loop of the recursive directory iterator, another system call \texttt{io\_getevents} is called to gather any completed reads and writes from the kernel and invoke their callbacks. Whenever a callback for a write is invoked, it invokes \texttt{CopyTask::schedule\_next\_read}. The \texttt{CopyTask} corresponding to each \texttt{iocb} is kept in a private lookup table, enabling it to be recovered from the callbacks, which are global function pointers. Whenever a callback for a read is invoked, it simply reinitializes the \texttt{iocb} into a write, changes the file descriptor to the output file, and immediately resubmits it. Here, we potentially could have performed batching of writes to reduce the number of system calls, but due to complexity concerns and time limits, decided to leave it as-is.
+
+After the directory iterator finishes, the event queue is then drained by calling \texttt{io\_getevents} in a loop until the \texttt{iocb} to \texttt{CopyTask} lookup table is empty, meaning all \texttt{CopyTask}s have completed.
+
+\section{Challenges and Limitations}
 A function critical to our implementation,
 \texttt{boost::filesystem::relativize}, was missing in the version of Boost
 installed on the lab computers. This function takes two absolute paths and makes
@@ -60,16 +71,20 @@ instead of 1.
 
 During early testing, we attempted to copy the Linux 4.4 kernel tree, a 711 megabyte repository of mostly small files. acpr used over 7 minutes before it was killed, while cp used only 1 second. Some profiling indicated that the AIO subsystem finished very quickly, it was the \texttt{fsync} call for each file that slowed everything down. Disabling the \texttt{fsync} by default sped the copy up to about 3 seconds. We verified that \texttt{cp} also chose not to call it by observing the system calls it made using \texttt{strace}.
 
-\section{Limitations}
-
-Attributes and ownership are currently not copied properly. Symbolic links are skipped.
+Currently, attributes and ownership are not completely copied from the source to the destination. In addition, due to complications arising from relative symbolic links, all symbolic links are skipped when copying.
 
 \section{Evaluation}
-acpr was evaluated on two main platforms, a laptop running Linux with an SSD, and the csres server machines. The laptop is a 2013 Thinkpad X1 Carbon, with Arch Linux, updated to the latest packages as of December 5, 2017. The laptop has an Intel i7-4600U processor clocked at 2.1 GHz and 8 GB of RAM, with 4 GB of swap space configured. The partition holding the test data had 58 GB of free space and was formatted as ext4.
+acpr was evaluated on two main platforms, a laptop running Linux with an SSD, and the csres server machines. The test script first runs \texttt{cp -r} on the directories under test, then runs \texttt{acpr} to another destination directory, and times both. The test script also has the ability to sync and clear the buffer cache by calling \texttt{echo 3 > /proc/sys/vm/drop\_caches}, which we opt to do for all cases below, to test the AIO system's ability to reorder requests effectively for IO. After copying, the source and destination directories will be compared using \texttt{diff -r}, which will perform a deep diff of the entire subtree to find corrupt, absent, or extra files from the copy.
+
+The laptop is a 2013 Thinkpad X1 Carbon, with Arch Linux, updated to the latest packages as of December 5, 2017. The laptop has an Intel i7-4600U processor clocked at 2.1 GHz, 8 GB of RAM, and 4 GB of swap space configured. The tests were run on the owner's home directory, which is on a local ext4 partition.
+
+The csres server machines run Ubuntu LTS 16.04.3, and have 32 Intel Xeon E5-2620 v4 processors clocked at 2.1 GHz, 126 GB of RAM, and 128 GB of swap space configured. The tests were run on the /var/tmp directory, which is on a local ext4 partition, instead of the NFS home directories.
 
 \subsection{Copying Linux Source Tree}
+We evaluate the performance of acpr in a real-world scenario by copying the Linux 4.4.97 kernel source tree from one folder to another. However, since the Linux kernel contains some relative symlinks, which we skip, the test script will report differences. We have verified that manually using \texttt{diff -r} that acpr is copying the output correctly. For this case, we vary the threshold at which AIO is chosen over a normal copy using \texttt{read} and \texttt{write}. Thresholds 1K (default), 4K, and 8K were tested. 
 
 \subsection{Copying a Single Large File}
+We evaluate the performance of acpr on a single large file by copying a directory holding an 880 MB of Lubuntu 16.04.3, and vary the AIO block size parameter (how much is transferred in a single AIO operation). We also test what happens when the file is preallocated at the destination and readahead is invoked on the source file.
 
 
 
