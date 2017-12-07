@@ -71,6 +71,14 @@ Thumbs.db
 *.dll
 *.exe
 
+# LaTeX files
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+
 build/
 CMakeLists.txt.user
 test/*.csv
