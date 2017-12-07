@@ -6,6 +6,13 @@ lubuntu_default.csv =>
 	CPR, 5821772.09355868399143218994, 98693.21318767232878599316, 151.15739539575117
 	ACPR, 5859589.55720998346805572510, 43209.89104484034032793716, 150.1818340104029
 
+lubuntu_default_nosync.csv => 
+	sudo ./acpr_test.py -n 10 -v ~/var/tmp/vlee/image ~/var/tmp/vlee/image_copy
+	image contains a 880M ISO of lubuntu-16.04.2-desktop.amd64.iso
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 1492807.87450261414051055908, 1975311.42916065710596740246, 589.4957558039456
+	ACPR, 900876.73002853989601135254, 68479.02466124820057302713, 976.8305439770005
+
 lubuntu_fallocate-readahead.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/image /var/tmp/vlee/image_copy --args -fr
 	sync and clear caches before each copy
@@ -14,6 +21,14 @@ lubuntu_fallocate-readahead.csv =>
 	Program, Mean (μs), Std (μs), Throughput (MB/s)
 	CPR, 5870203.67551594972610473633, 337121.19091641640989109874, 149.91028504179693
 	ACPR, 5929963.97688984870910644531, 103940.41654256403853651136, 148.39953660419116
+
+lubuntu_fallocate-readahead_nosync.csv =>
+	sudo ./acpr_test.py -n 10 -v /var/tmp/vlee/image /var/tmp/vlee/image_copy --args -fr
+	fallocate and readahead before copying
+	image contains a 880M ISO of lubuntu-16.04.2-desktop.amd64.iso
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 851084.14469286799430847168, 40588.01963051912753144279, 1033.979908728729
+	ACPR, 823350.39237514138221740723, 44166.57023150637542130426, 1068.8085102035704
 
 lubuntu_128K.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/image /var/tmp/vlee/image_copy --args -b 128
