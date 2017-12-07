@@ -18,7 +18,7 @@
 Our project proposal is to use Linux's asynchronous IO interfaces (aio) to build
 an optimized version of cp -r. Our implementation will take an existing
 directory name and a new name and copy the entire directory tree to the location
-specified.
+specified. We aim for our program to be competitive with \texttt{cp -r}'s speeds (within 1.5x slower).
 
 \section{Major Decisions} 
 
@@ -43,10 +43,10 @@ asynchronous IO task dominates the cost of simply using \texttt{read} and
 explored in the Evaluation.
 
 \section{Implementation}
-After parsing all arguments, \texttt{acpr} initializes a recursive directory iterator from Boost, which yields a breadth-first traversal of every path in the given source directory. For each path, we run \texttt{lstat} to discover if it is a file or directory. If a directory, we create it immediately in the output path with \texttt{mkdir}. Since the iterator is breadth-first, we are guaranteed that all parent directories exist at the time of calling. If a file and it is below the AIO threshold, we copy it using a boost utility function implemented with \texttt{read} and \texttt{write}. Otherwise, we use the AIO system.
+After parsing all arguments, \texttt{acpr} initializes a recursive directory iterator from Boost, which yields a breadth-first traversal of every path in the given source directory. For each path, we run \texttt{lstat} to discover if it is a file or directory. If a directory, we create it immediately in the output path with \texttt{mkdir}. Since the iterator is breadth-first, we are guaranteed that all parent directories exist at the time of calling. If a file and it is below the AIO threshold, we copy it using a Boost utility function implemented with \texttt{read} and \texttt{write}. Otherwise, we use the AIO system.
 
 \subsection{AIO Copying}
-A copy of a single file using AIO is represented by a class \texttt{CopyTask}. This class encapsulates the state of each copy, as well as a fixed number of  \texttt{iocb}'s. An \texttt{iocb} is the AIO system's unit of work. Each time \texttt{CopyTask::schedule\_next\_read} is called, we scan to see if there are any free \texttt{iocb}'s, and attach to each of them offsets to read, a file descriptor to read from, a buffer to read into, and a callback to invoke when complete. Once enough \texttt{iocb}'s have been buffered, the system call \texttt{io\_submit} is invoked, passing all initialized \texttt{iocb}'s to the kernel. 
+A copy of a single file using AIO is represented by a class \texttt{CopyTask}. This class encapsulates the state of each copy, as well as a fixed number of  \texttt{iocb}'s. An \texttt{iocb} is the AIO system's unit of work. Each time \texttt{CopyTask::schedule\_next\_read} is called, we scan to see if there are any free \texttt{iocb}'s, and attach to each of them offsets to read, the file descriptor to read from, a buffer to read into, and a callback to invoke when complete. Once enough \texttt{iocb}'s have been buffered, the system call \texttt{io\_submit} is invoked, passing all initialized \texttt{iocb}'s to the kernel. 
 
 At the end of each loop of the recursive directory iterator, another system call \texttt{io\_getevents} is called to gather any completed reads and writes from the kernel and invoke their callbacks. This call takes a timeout that represents the maximum time the user is willing to wait for the kernel to give it events. Whenever a callback for a write is invoked, it invokes \texttt{CopyTask::schedule\_next\_read}. The \texttt{CopyTask} corresponding to each \texttt{iocb} is kept in a private lookup table, enabling it to be recovered from the callbacks, which are global function pointers. Whenever a callback for a read is invoked, it simply reinitializes the \texttt{iocb} into a write, changes the file descriptor to the output file, and immediately resubmits it. Here, we potentially could have performed batching of writes to reduce the number of system calls, but due to complexity concerns and time limits, decided to leave it as-is.
 
@@ -66,10 +66,9 @@ a particular call naively. \texttt{io\_queue\_run} is a function that polls the
 kernel event queues and runs callbacks. However, we looked at the implementation
 and discovered that it was receiving events one by one, making a system call for
 every single one. We replaced calls to this function with direct system calls to
-read the event queue ourselves, resulting in about 64 events per system call
-instead of 1.
+read the event queue ourselves, reducing the amount of system calls needed to process the same number of events.
 
-During early testing, we attempted to copy the Linux 4.4 kernel tree, a 711 megabyte repository of mostly small files. acpr used over 7 minutes before it was killed, while cp used only 1 second. Some profiling indicated that the AIO subsystem finished very quickly, it was the \texttt{fsync} call for each file that slowed everything down. Disabling the \texttt{fsync} by default sped the copy up to about 3 seconds. We verified that \texttt{cp} also chose not to call it by observing the system calls it made using \texttt{strace}.
+During early testing, we attempted to copy the Linux 4.4.97 kernel tree on an SSD, a 711 megabyte repository of mostly small files. acpr used over 7 minutes before it was killed, while cp used only 1 second. Some profiling indicated that the AIO subsystem finished very quickly, it was the \texttt{fsync} call for each file that slowed everything down. Disabling the \texttt{fsync} by default sped the copy up to about 3 seconds. We verified that \texttt{cp} also chose not to call it by observing the system calls it made using \texttt{strace}. 
 
 Currently, attributes and ownership are not completely copied from the source to the destination. In addition, due to complications arising from relative symbolic links, all symbolic links are skipped when copying.
 
@@ -105,16 +104,26 @@ Our final experiment was to vary the timeout when gathering events. Changing the
 The csres server machines run Ubuntu LTS 16.04.3, and have 32 Intel Xeon E5-2620 v4 processors clocked at 2.1 GHz, 126 GB of RAM, and 128 GB of swap space configured. The tests were run on the /var/tmp directory, which is on a local ext4 partition, instead of the NFS home directories. The partition is on a Seagate 7200RPM enterprise grade hard disk.
 
 \subsubsection{Copying a Single Large File}
-\subsubsection{Copying Linux Source Tree}
+The same test cases as above were performed on \texttt{zerberus.csres.utexas.edu}. Overall throughput was lower, as expected, with the default configuration taking 5.86s and 150.18 MB/s. \texttt{cp -r} barely did better at 5.82s and 151.15 MB/s.
 
+Employing fallocate and readahead actually slowed performance down to 5.93s and 148.40 MB/s, though the difference is well within deviation. For the rest of the experiments (adjusting the block size and timeout wait), the results remained very close to the default configuration (the detailed data can be seen in the figures and on the repository). We attribute this to a bottleneck that is external to both \texttt{cp} and \texttt{acpr} - disk latency. 
+
+To test this, we ran the baseline and fallocate cases again, without the the flag that calls \texttt{sync} and \texttt{echo 3 > /proc/sys/vm/drop\_caches} every iteration. As expected, throughput was much higher as our calls were now being serviced straight from memory. What was more surprising, however, was that \texttt{acpr} had a clear speedup over \texttt{cp -r} in both cases. In the default configuration with no syncing, \texttt{cp -r} manages 1.49s and 589.59 MB/s while \texttt{acpr} finishes in 0.9s and 976 MB/s. With fallocate and readahead, \texttt{cp -r} finishes in 0.85s and 1033.97 MB/s and \texttt{acpr} in 0.82s and 1068 MB/s.
+
+\subsubsection{Copying Linux Source Tree}
+Both \texttt{cp -r} and \texttt{acpr} performed quite poorly copying the Linux 4.4.97 kernel source tree, with \texttt{cp -r} taking 14.19s and 41.77 MB/s, and \texttt{acpr} taking 34.6s and 17.11 MB/s. While increasing the threshold of using AIO did improve performance, the change was miniscule. Likewise, for all other cases (adjusting block size, adjusting \texttt{iocb} count, and adjusting timeout), there was no significant change from the default configuration. Again, we attribute this to factors beyond both programs' control. \texttt{acpr} is probably slower because the kernel contains many small files, so the overhead of setting up AIO, allocating buffers, etc. dominates the time to actually transfer the data.
 
 \section{Conclusion}
+We have produced a prototype of a \texttt{cp -r} clone that uses Linux's Asynchronous IO interface to perform its data transfers. While it does not outperform \texttt{cp -r} except for two cases, it remains within acceptable performance bounds, especially on SSD hardware. Further improvements would include a more robust event handling system with multiple threads, support for symbolic links, support for attribute copying, and batching of write task submissions.
 
 \section{Time Spent}
 
 About 1.5 hours were spent researching the state of asynchronous IO, finding
 documentation for the chosen libraries, and setting up the build system of the
 project.
+About 8 hours were spent overall creating the acpr program itself, including planning, programming, and optimization.
+About 5 hours were spent creating test cases, executing test cases, and collecting the data.
+About 2 hours were spent creating the report and presentation.
 
 \begin{thebibliography}{99}
         \bibitem{aio7}
