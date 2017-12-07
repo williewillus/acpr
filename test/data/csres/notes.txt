@@ -114,19 +114,31 @@ linux_cb32.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -c 32
 	sync and clear caches before each copy
 	Use 32 iocbs per file copied
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 13913883.67321342229843139648, 492063.01072920317528769374, 42.60068670567718
+	ACPR, 40387387.98662088811397552490, 1117437.96967101027257740498, 14.676388565117378
 
 linux_1ms.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -n 1000000
 	sync and clear caches before each copy
 	10 ms to receive events while running
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 13897459.57697741687297821045, 662278.51470466679893434048, 42.65103243788086
+	ACPR, 35700694.94824856519699096680, 1599300.10067107970826327801, 16.60306613305523
 
 linux_10ms.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -n 10000000
 	sync and clear caches before each copy
 	10 ms timeout to receive events while running
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 14043064.13489393889904022217, 632611.82760286517441272736, 42.208808101144406
+	ACPR, 35504000.50869211554527282715, 1975700.87088401173241436481, 16.695048184124673
 
 linux_0ms.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -n 0
 	sync and clear caches before each copy
 	unlimited/no timeout to receive events while running
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 14268736.64958402514457702637, 467303.28818120533833280206, 41.5412389883222
+	ACPR, 34848035.80492734909057617188, 1918319.97205854882486164570, 17.009308717996408
 
