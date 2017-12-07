@@ -66,32 +66,49 @@ lubuntu_10ms.csv =>
 linux_default.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy
 	sync and clear caches before each copy
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 14188728.70705090463161468506, 496296.40309400192927569151, 41.775483305086155
+	ACPR, 34633454.61143180727958679199, 1788590.04139615665189921856, 17.114694617445117
 
 linux_threshold4K.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -t 4096
 	sync and clear caches before each copy
 	only use AIO for files above 4K (there are 25984 such files in the folder)
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 14231325.38250647485256195068, 562464.43079401121940463781, 41.65044247743888
+	ACPR, 34022208.53995531797409057617, 1671925.18189271097071468830, 17.42217876672213
 
 linux_threshold8K.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -t 8192 
 	sync and clear caches before each copy
 	only use AIO for files above 8K (there are 16914 such files in the folder)
-
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 14331750.30807033181190490723, 337042.94645652530016377568, 41.35859099415263
+	ACPR, 33564352.60209254920482635498, 1938025.55570697342045605183, 17.659837097076846
 
 linux_32K.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -b 32
 	sync and clear caches before each copy
 	Copy 32K per AIO operation
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 13831517.12850667536258697510, 688587.25116294890176504850, 42.85437336444937
+	ACPR, 35420853.47981192171573638916, 1627555.09181208768859505653, 16.734238195576904
 
 linux_16K.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -b 16
 	sync and clear caches before each copy
 	Copy 16K per AIO operation
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 14129296.60864174365997314453, 447412.78510167356580495834, 41.951203633114346
+	ACPR, 35224049.04719442129135131836, 1822735.05048493505455553532, 16.827736028519222
 
 linux_cb16.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -c 16
 	sync and clear caches before each copy
 	Use 16 iocbs per file copied
+	Program, Mean (μs), Std (μs), Throughput (MB/s)
+	CPR, 13873555.68432249128818511963, 559752.44900346407666802406, 42.72451941729803
+	ACPR, 38195968.67063082754611968994, 1610890.38619787222705781460, 15.518417776836351
 
 linux_cb32.csv =>
 	sudo ./acpr_test.py -n 10 -vc /var/tmp/vlee/linux-4.4.97 /var/tmp/vlee/linux-4.4.97_copy --args -c 32
