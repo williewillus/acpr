@@ -66,7 +66,7 @@ a particular call naively. \texttt{io\_queue\_run} is a function that polls the
 kernel event queues and runs callbacks. However, we looked at the implementation
 and discovered that it was receiving events one by one, making a system call for
 every single one. We replaced calls to this function with direct system calls to
-read the event queue ourselves, reducing the amount of system calls needed to process the same number of events.
+read the event queue ourselves, reducing the amount of system calls needed to process the same number of events. In addition, the user space library was poorly documented in general; we had to find an Ubuntu man page from 2012 in order to see examples of its usage~\cite{ubuntu}.
 
 During early testing, we attempted to copy the Linux 4.4.97 kernel tree on an SSD, a 711 megabyte repository of mostly small files. acpr used over 7 minutes before it was killed, while cp used only 1 second. Some profiling indicated that the AIO subsystem finished very quickly, it was the \texttt{fsync} call for each file that slowed everything down. Disabling the \texttt{fsync} by default sped the copy up to about 3 seconds. We verified that \texttt{cp} also chose not to call it by observing the system calls it made using \texttt{strace}. 
 
@@ -128,6 +128,8 @@ About 2 hours were spent creating the report and presentation.
 \begin{thebibliography}{99}
         \bibitem{aio7}
         aio (7), http://man7.org/linux/man-pages/man7/aio.7.html
+        \bibitem{ubuntu}
+        Asynchornous IO, http://manpages.ubuntu.com/manpages/precise/en/man3/io.3.html
 \end{thebibliography}
 
 \end{document}
