@@ -3,6 +3,8 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 
+\graphicspath{{./Figures/}}
+
 \usetheme{Madrid}
 \usecolortheme{default}
 
@@ -90,12 +92,14 @@
 \begin{frame}
 \frametitle{Challenges}
 \begin{enumerate}[1.]
-	\item{Cheating fsync}
+	\item{Cheating \texttt{fsync}}
 	\begin{itemize}
-		\item{Trying to copy Linux 4.4 source (711 MB). cp: 1 second, acpr: 7 minutes+}
-		\item{Turns out cp does not fsync anything after finishing (verified using strace)}
+		\item{Trying to copy Linux 4.4 source (711 MB). \\ 
+			\texttt{cp -r}: 1 second, \texttt{acpr}: 7 minutes+}
+		\item{Turns out \texttt{cp -r} does not \texttt{fsync} anything after finishing 
+			(verified using \texttt{strace})}
 		\item{So we turned it off as well, adding a flag to reenable it}
-		\item{acpr now copies Linux 4.4 tree in a respectable 3 seconds with default flags}
+		\item{\texttt{acpr} now copies Linux 4.4 tree in a respectable 3 seconds with default flags}
 	\end{itemize}
 	\item{Attributes and Links}
 	\begin{itemize}
@@ -126,6 +130,13 @@
 \end{frame}
 
 \begin{frame}
+    \frametitle{Evaluation: SSD}
+    \framesubtitle{Copying Lubuntu ISO on Laptop}
+    \centering
+    \includegraphics[width=0.8\textwidth,height=0.8\textheight,]{Laptop_Lubuntu_Barplot.pdf}
+\end{frame}
+
+\begin{frame}
 \frametitle{Evaluation: SSD}
 \begin{enumerate}[1.]
 	\item{Copying Linux Source}
@@ -137,6 +148,13 @@
 		\item Again, adjusting timeout had negligible effect
 	\end{itemize}
 \end{enumerate}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Evaluation: SSD}
+    \framesubtitle{Copying Linux 4.4 on Laptop}
+    \centering
+    \includegraphics[width=0.8\textwidth,height=0.8\textheight,]{Laptop_Linux_Barplot.pdf}
 \end{frame}
 
 \begin{frame}
@@ -160,6 +178,20 @@
 		\item For all other experiments, negligible changes as well
 	\end{itemize}
 \end{enumerate}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Evaluation: HDD}
+    \framesubtitle{Copying Lubuntu ISO}
+    \centering
+    \includegraphics[width=0.8\textwidth,height=0.8\textheight,]{CSRES_Lubuntu_Barplot.pdf}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Evaluation: HDD}
+    \framesubtitle{Copying Linux 4.4 on Laptop}
+    \centering
+    \includegraphics[width=0.8\textwidth,height=0.8\textheight,]{CSRES_Linux_Barplot.pdf}
 \end{frame}
 
 \begin{frame}
