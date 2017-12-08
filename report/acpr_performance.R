@@ -26,46 +26,74 @@ csres_df <- data_frame(Test = unlist(strsplit(csres_dataFiles, split=".csv"))) %
           unnest %>%
           melt(id.vars = c("Test", "Trial"), value.name = "Time", variable.name = "Program")
 
+# Read all macbook datafiles into single dataframe for ggplot2
+macbook_data_path <- "../test/data/macbook/"
+macbook_dataFiles <- list.files(path=macbook_data_path, pattern=".csv")
+
+macbook_df <- data_frame(Test = unlist(strsplit(macbook_dataFiles, split=".csv"))) %>%
+              mutate(file_contents = map(macbook_dataFiles, ~ read_csv(file.path(macbook_data_path, .), skip=1)))  %>%
+              unnest %>%
+              melt(id.vars = c("Test", "Trial"), value.name = "Time", variable.name = "Program")
+
+
 # Extract different datasets
-laptop_linux_df <- laptop_df %>% 
-                   filter(grepl('linux*', Test)) %>%
-                   arrange(Test, Trial, Program)
-laptop_lubuntu_df <- laptop_df %>% 
-                     filter(grepl('lubuntu*', Test)) %>%
-                     arrange(Test, Trial, Program)
-csres_linux_df <- csres_df %>% 
-                  filter(grepl('linux*', Test)) %>%
-                  arrange(Test, Trial, Program)
-csres_lubuntu_df <- csres_df %>% 
-                    filter(grepl('lubuntu*', Test)) %>%
-                    arrange(Test, Trial, Program)
+laptop_linux_df <- laptop_df %>% filter(grepl('linux*', Test)) %>%
+                              arrange(Test, Trial, Program)
+laptop_lubuntu_df <- laptop_df %>% filter(grepl('lubuntu*', Test)) %>%
+                                   arrange(Test, Trial, Program)
+csres_linux_df <- csres_df %>% filter(grepl('linux*', Test)) %>%
+                               arrange(Test, Trial, Program)
+csres_lubuntu_df <- csres_df %>% filter(grepl('lubuntu*', Test)) %>%
+                                 arrange(Test, Trial, Program)
+macbook_linux_df <- macbook_df %>% filter(grepl('linux*', Test)) %>%
+                                   arrange(Test, Trial, Program)
+macbook_lubuntu_df <- macbook_df %>% filter(grepl('lubuntu*', Test)) %>%
+                                     arrange(Test, Trial, Program)
 
 # Remove prefix from datasets
 laptop_linux_df$Test <- sapply(strsplit(laptop_linux_df$Test, split='linux_', fixed=TRUE), function(x) (x[2]))
 laptop_lubuntu_df$Test <- sapply(strsplit(laptop_lubuntu_df$Test, split='lubuntu_', fixed=TRUE), function(x) (x[2]))
 csres_linux_df$Test <- sapply(strsplit(csres_linux_df$Test, split='linux_', fixed=TRUE), function(x) (x[2]))
 csres_lubuntu_df$Test <- sapply(strsplit(csres_lubuntu_df$Test, split='lubuntu_', fixed=TRUE), function(x) (x[2]))
+macbook_linux_df$Test <- sapply(strsplit(macbook_linux_df$Test, split='linux_', fixed=TRUE), function(x) (x[2]))
+macbook_lubuntu_df$Test <- sapply(strsplit(macbook_lubuntu_df$Test, split='lubuntu_', fixed=TRUE), function(x) (x[2]))
+
+# Constants in MB
+linux_size = 711
+lubuntu_size = 880
 
 # Compute summary statistics
 laptop_linux_stats <- laptop_linux_df %>%
                       group_by(Test, Program) %>% 
-                      summarize(Mean = mean(Time), Std = sd(Time))
+                      summarize(Mean = mean(Time), Std = sd(Time)) %>%
+                      mutate(Thru = linux_size / Mean)
 laptop_lubuntu_stats <- laptop_lubuntu_df %>% 
                         group_by(Test, Program) %>% 
-                        summarize(Mean = mean(Time), Std = sd(Time))
+                        summarize(Mean = mean(Time), Std = sd(Time)) %>%
+                        mutate(Thru = lubuntu_size / Mean)
 csres_linux_stats <- csres_linux_df %>%
                      group_by(Test, Program) %>% 
-                     summarize(Mean = mean(Time), Std = sd(Time))
+                     summarize(Mean = mean(Time), Std = sd(Time)) %>%
+                     mutate(Thru = linux_size / Mean)
 csres_lubuntu_stats <- csres_lubuntu_df %>% 
                        group_by(Test, Program) %>% 
-                       summarize(Mean = mean(Time), Std = sd(Time))
+                       summarize(Mean = mean(Time), Std = sd(Time)) %>%
+                       mutate(Thru = lubuntu_size / Mean)
+macbook_linux_stats <- macbook_linux_df %>%
+                       group_by(Test, Program) %>% 
+                       summarize(Mean = mean(Time), Std = sd(Time)) %>%
+                       mutate(Thru = linux_size / Mean)
+macbook_lubuntu_stats <- macbook_lubuntu_df %>% 
+                         group_by(Test, Program) %>% 
+                         summarize(Mean = mean(Time), Std = sd(Time)) %>%
+                         mutate(Thru = lubuntu_size / Mean)
 
 ####### Barplots with error bars #######
 # Plot laptop linux data
 p <- laptop_linux_stats %>% ggplot(aes(x = Test, y = Mean, fill=Program)) +  
                      geom_bar(stat="identity", position = position_dodge(0.75)) +
                      geom_errorbar(aes(ymin=Mean - Std, ymax=Mean + Std), width=.2,position=position_dodge(0.75)) +
-                     labs(title="ACPR vs CPR on Laptop", subtitle="Copying Linux 4.4 kernel") +
+                     labs(title="ACPR vs CPR on Thinkpad", subtitle="Copying Linux 4.4 kernel") +
                      theme_bw() +
                      theme(axis.text.x=element_text(angle=90,hjust=1))
 ggsave(filename = "Laptop_Linux_Barplot.pdf", p)
@@ -74,7 +102,7 @@ ggsave(filename = "Laptop_Linux_Barplot.pdf", p)
 p <- laptop_lubuntu_stats %>% ggplot(aes(x = Test, y = Mean, fill=Program)) +  
                        geom_bar(stat="identity", position = position_dodge(0.75)) +
                        geom_errorbar(aes(ymin=Mean - Std, ymax=Mean + Std), width=.2,position=position_dodge(0.75)) +
-                       labs(title="ACPR vs CPR on Laptop", subtitle="Copying Lubuntu ISO") +
+                       labs(title="ACPR vs CPR on Thinkpad", subtitle="Copying Lubuntu ISO") +
                        theme_bw() +
                        theme(axis.text.x=element_text(angle=90,hjust=1))
 ggsave(filename = "Laptop_Lubuntu_Barplot.pdf", p)
@@ -97,13 +125,74 @@ p <- csres_lubuntu_stats %>% ggplot(aes(x = Test, y = Mean, fill=Program)) +
                       theme(axis.text.x=element_text(angle=90,hjust=1))
 ggsave(filename = "CSRES_Lubuntu_Barplot.pdf", p)
 
-####### Boxplots for laptop data #######
+# Plot macbook linux data
+p <- macbook_linux_stats %>% ggplot(aes(x = Test, y = Mean, fill=Program)) +  
+                             geom_bar(stat="identity", position = position_dodge(0.75)) +
+                             geom_errorbar(aes(ymin=Mean - Std, ymax=Mean + Std), width=.2,position=position_dodge(0.75)) +
+                             labs(title="ACPR vs CPR on Macbook Pro", subtitle="Copying Linux 4.4 kernel") +
+                             theme_bw() +
+                             theme(axis.text.x=element_text(angle=90,hjust=1))
+ggsave(filename = "Macbook_Linux_Barplot.pdf", p)
+
+# Plot macbook lubuntu data
+p <- macbook_lubuntu_stats %>% ggplot(aes(x = Test, y = Mean, fill=Program)) +  
+                               geom_bar(stat="identity", position = position_dodge(0.75)) +
+                               geom_errorbar(aes(ymin=Mean - Std, ymax=Mean + Std), width=.2,position=position_dodge(0.75)) +
+                               labs(title="ACPR vs CPR on Macbook Pro", subtitle="Copying Lubuntu ISO") +
+                               theme_bw() +
+                               theme(axis.text.x=element_text(angle=90,hjust=1))
+ggsave(filename = "Macbook_Lubuntu_Barplot.pdf", p)
+
+###### Throughput barplots ######
+# Plot laptop linux data
+laptop_linux_stats %>% ggplot(aes(x = Test, y = Thru, fill=Program)) +  
+                            geom_bar(stat="identity", position = position_dodge(0.75)) +
+                            labs(title="ACPR vs CPR on Thinkpad", subtitle="Copying Linux 4.4 kernel", y = "Throughput (MB/s)") +
+                            theme_bw() +
+                            theme(axis.text.x=element_text(angle=90,hjust=1))
+
+# Plot laptop lubuntu data
+laptop_lubuntu_stats %>% ggplot(aes(x = Test, y = Thru, fill=Program)) +  
+                              geom_bar(stat="identity", position = position_dodge(0.75)) +
+                              labs(title="ACPR vs CPR on Thinkpad", subtitle="Copying Lubuntu ISO", y = "Troughput (MB/s)") +
+                              theme_bw() +
+                              theme(axis.text.x=element_text(angle=90,hjust=1))
+
+# Plot csres linux data
+csres_linux_stats %>% ggplot(aes(x = Test, y = Thru, fill=Program)) +  
+                           geom_bar(stat="identity", position = position_dodge(0.75)) +
+                           labs(title="ACPR vs CPR on Zerberus", subtitle="Copying Linux 4.4 kernel", y = "Throughput (MB/s)") +
+                           theme_bw() +
+                           theme(axis.text.x=element_text(angle=90,hjust=1))
+
+# Plot csres lubuntu data
+csres_lubuntu_stats %>% ggplot(aes(x = Test, y = Thru, fill=Program)) +  
+                             geom_bar(stat="identity", position = position_dodge(0.75)) +
+                             labs(title="ACPR vs CPR on Zerberus", subtitle="Copying Lubuntu ISO", y = "Troughput (MB/s)") +
+                             theme_bw() +
+                             theme(axis.text.x=element_text(angle=90,hjust=1))
+
+# Plot macbook linux data
+macbook_linux_stats %>% ggplot(aes(x = Test, y = Thru, fill=Program)) +  
+                             geom_bar(stat="identity", position = position_dodge(0.75)) +
+                             labs(title="ACPR vs CPR on Macbook Pro", subtitle="Copying Linux 4.4 kernel", y = "Throughput (MB/s)") +
+                             theme_bw() +
+                             theme(axis.text.x=element_text(angle=90,hjust=1))
+
+# Plot macbook lubuntu data
+macbook_lubuntu_stats %>% ggplot(aes(x = Test, y = Thru, fill=Program)) +  
+                               geom_bar(stat="identity", position = position_dodge(0.75)) +
+                               labs(title="ACPR vs CPR on Macbook Pro", subtitle="Copying Lubuntu ISO", y = "Troughput (MB/s)") +
+                               theme_bw() +
+                               theme(axis.text.x=element_text(angle=90,hjust=1))
+
+####### Boxplots #######
 # Plot laptop linux data
 laptop_linux_df %>% ggplot(aes(x=Test, y=Time, fill=Program)) + 
                   geom_boxplot() +
                   stat_summary(fun.y=mean, geom="point", shape=5, size=3) +
                   facet_wrap(~Program) +
-                  labs(title="ACPR vs CPR on Laptop", subtitle="Copying Linux 4.4 kernel") +
+                  labs(title="ACPR vs CPR on Thinkpad", subtitle="Copying Linux 4.4 kernel") +
                   theme_bw() +
                   theme(axis.text.x=element_text(angle=90,hjust=1))
 
@@ -112,11 +201,10 @@ laptop_lubuntu_df %>% ggplot(aes(x=Test, y=Time, fill=Program)) +
                     geom_boxplot() +
                     stat_summary(fun.y=mean, geom="point", shape=5, size=3) +
                     facet_wrap(~Program) +
-                    labs(title="ACPR vs CPR on Laptop", subtitle="Copying Lubuntu ISO") +
+                    labs(title="ACPR vs CPR on Thinkpad", subtitle="Copying Lubuntu ISO") +
                     theme_bw() +
                     theme(axis.text.x=element_text(angle=90,hjust=1))
 
-####### Boxplots for csres data #######
 # Plot csres linux data
 csres_linux_df %>% ggplot(aes(x=Test, y=Time, fill=Program)) + 
                  geom_boxplot() +
@@ -135,19 +223,37 @@ csres_lubuntu_df %>% ggplot(aes(x=Test, y=Time, fill=Program)) +
                    theme_bw() +
                    theme(axis.text.x=element_text(angle=90,hjust=1))
 
+# Plot macbook linux data
+macbook_linux_df %>% ggplot(aes(x=Test, y=Time, fill=Program)) + 
+                     geom_boxplot() +
+                     stat_summary(fun.y=mean, geom="point", shape=5, size=3) +
+                     facet_wrap(~Program) +
+                     labs(title="ACPR vs CPR on Macbook Pro", subtitle="Copying Linux 4.4 kernel") +
+                     theme_bw() +
+                     theme(axis.text.x=element_text(angle=90,hjust=1))
+
+# Plot macbook lubuntu data
+macbook_lubuntu_df %>% ggplot(aes(x=Test, y=Time, fill=Program)) + 
+                       geom_boxplot() +
+                       stat_summary(fun.y=mean, geom="point", shape=5, size=3) +
+                       facet_wrap(~Program) +
+                       labs(title="ACPR vs CPR on Macbook Pro", subtitle="Copying Lubuntu ISO") +
+                       theme_bw() +
+                       theme(axis.text.x=element_text(angle=90,hjust=1))
+
 ####### Trial plots #######
 # Plot all for laptop linux
 laptop_linux_df %>% ggplot(aes(x=Trial, y=Time, fill=Program, color=Program)) + 
                   geom_point() + 
                   facet_wrap(~Test) +
-                  labs(title="ACPR vs CPR on Laptop", subtitle="Copying Linux 4.4 kernel") +
+                  labs(title="ACPR vs CPR on Thinkpad", subtitle="Copying Linux 4.4 kernel") +
                   theme_minimal()
 
 # Plot all for laptop lubuntu
 laptop_lubuntu_df %>% ggplot(aes(x=Trial, y=Time, fill=Program, color=Program)) + 
                     geom_point() + 
                     facet_wrap(~Test) +
-                    labs(title="ACPR vs CPR on Laptop", subtitle="Copying Lubuntu ISO") +
+                    labs(title="ACPR vs CPR on Thinkpad", subtitle="Copying Lubuntu ISO") +
                     theme_minimal()
 
 # Plot all for csres linux
@@ -163,3 +269,17 @@ csres_lubuntu_df %>% ggplot(aes(x=Trial, y=Time, fill=Program, color=Program)) +
                    facet_wrap(~Test) +
                    labs(title="ACPR vs CPR on Zerberus", subtitle="Copying Lubuntu ISO") +
                    theme_minimal()
+
+# Plot all for macbook linux
+macbook_linux_df %>% ggplot(aes(x=Trial, y=Time, fill=Program, color=Program)) + 
+                     geom_point() + 
+                     facet_wrap(~Test) +
+                     labs(title="ACPR vs CPR on Macbook Pro", subtitle="Copying Linux 4.4 kernel") +
+                     theme_minimal()
+
+# Plot all for macbook lubuntu
+macbook_lubuntu_df %>% ggplot(aes(x=Trial, y=Time, fill=Program, color=Program)) + 
+                       geom_point() + 
+                       facet_wrap(~Test) +
+                       labs(title="ACPR vs CPR on Macbook Pro", subtitle="Copying Lubuntu ISO") +
+                       theme_minimal()
