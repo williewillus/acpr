@@ -58,6 +58,20 @@ csres_lubuntu_df$Test <- sapply(strsplit(csres_lubuntu_df$Test, split='lubuntu_'
 macbook_linux_df$Test <- sapply(strsplit(macbook_linux_df$Test, split='linux_', fixed=TRUE), function(x) (x[2]))
 macbook_lubuntu_df$Test <- sapply(strsplit(macbook_lubuntu_df$Test, split='lubuntu_', fixed=TRUE), function(x) (x[2]))
 
+# Reorder tests to start at default
+laptops_lubuntu_order <- c("default", "fallocate-readahead", "128K", "256K", "512K", "10ms", "1ms", "0ms")
+laptops_linux_order <- c("default", "threshold4K", "threshold8K", "32K", "16K", "cb16", "cb32", "10ms", "1ms", "0ms")
+csres_lubuntu_order <- c(laptops_lubuntu_order, "default_nosync", "fallocate-readahead_nosync")
+csres_linux_order <- laptops_linux_order
+
+laptop_linux_df$Test <- factor(laptop_linux_df$Test, laptops_linux_order)
+laptop_lubuntu_df$Test <- factor(laptop_lubuntu_df$Test, laptops_lubuntu_order)
+csres_linux_df$Test <- factor(csres_linux_df$Test, csres_linux_order)
+csres_lubuntu_df$Test <- factor(csres_lubuntu_df$Test, csres_lubuntu_order)
+macbook_linux_df$Test <- factor(macbook_linux_df$Test, laptops_linux_order)
+macbook_lubuntu_df$Test <- factor(macbook_lubuntu_df$Test, laptops_lubuntu_order)
+
+
 # Constants in MB
 linux_size = 711
 lubuntu_size = 880
